@@ -120,14 +120,28 @@
     var trunkMat = this.material('bark', {});
     var trunkGeo = G.cyl(0.16, 0.34, 1, 7, TILE.bark);
 
-    /* a canopy blob: an icosphere with its vertices kicked about */
+    /* A canopy blob: an icosphere pushed about by a smooth field.
+
+       The displacement has to be a function of where a vertex *is*, never of
+       its index. IcosahedronGeometry is non-indexed -- every face carries its
+       own copy of each corner -- so displacing by index moves the same corner
+       a different way for each face that shares it, and the canopy comes apart
+       into a cloud of loose triangles. Lit from the front that passes for
+       foliage. In silhouette against a dusk sky it is unmistakable: black
+       shards with gaps between them. Sampling one noise field along the three
+       axis pairs gives every copy of a corner the same answer, so the mass
+       stays closed and lumpy instead. */
     function blob(seed, detail) {
       var g = new T.IcosahedronGeometry(1, detail || 1);
-      var rng = new ER.RNG(seed);
+      var nz = new ER.Noise(seed);
       var pos = g.attributes.position;
+      var F = 1.05;
       for (var k = 0; k < pos.count; k++) {
         var x = pos.getX(k), y = pos.getY(k), z = pos.getZ(k);
-        var s = 1 + rng.float(-0.26, 0.26);
+        var n = (nz.fbm(x * F + 11.3, y * F + 3.1, 2) +
+                 nz.fbm(y * F + 5.7, z * F + 17.2, 2) +
+                 nz.fbm(z * F + 23.4, x * F + 7.9, 2)) / 3;
+        var s = 1 + (n - 0.5) * 0.58;
         pos.setXYZ(k, x * s, y * s * 0.86, z * s);
       }
       g.computeVertexNormals();
@@ -321,8 +335,14 @@
           set.mesh.setMatrixAt(i, m);
           continue;
         }
-        var sc = tall ? rng.float(0.32, 0.66) : rng.float(0.11, 0.21);
-        var wide = sc * rng.float(1.8, 3.0);
+        /* A tuft card is square in texture space, with the blades running up
+           it, so it has to stay roughly square in world space too. Scaling it
+           two or three times wider than tall -- which is what it was doing --
+           squashes every blade into a fat diagonal smear, and a lawn made of
+           those reads as brushed fabric rather than grass. Weeds are the other
+           way about: taller than they are wide. */
+        var sc = tall ? rng.float(0.42, 0.80) : rng.float(0.16, 0.27);
+        var wide = sc * (tall ? rng.float(0.45, 0.70) : rng.float(0.85, 1.20));
         e.set(0, rng.float(0, 6.2832), 0);
         q.setFromEuler(e);
         m.compose(new T.Vector3(x, h(x, z) - 0.03, z), q, new T.Vector3(wide, sc, wide));

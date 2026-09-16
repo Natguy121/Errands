@@ -263,6 +263,17 @@ worth writing down because each one looks exactly like the others:
    `totalEmissiveRadiance` by zero -- the town never lit up at night, and the
    cause was not the lighting code but a flag set on a material.
 
+**Displace by position, not by index.** `IcosahedronGeometry` is non-indexed:
+every face carries its own copy of each corner. The tree canopies were being
+kicked about with a per-vertex random, which gave the same corner a different
+offset for each face sharing it, and the canopy came apart into a cloud of
+loose triangles. Lit from the front that passes for foliage, which is why it
+survived so long; in silhouette against a dusk sky it is black shards with gaps
+between them. Sampling one noise field along the three axis pairs gives every
+copy of a corner the same answer, so the mass stays closed and still looks
+grown rather than moulded -- and it costs no extra triangles, which matters
+when one canopy geometry is instanced across a thousand trees.
+
 **Weather.** Rain is instanced streaks falling in a box around the camera with
 splash rings on the ground. Wetness drops the roughness and darkens the colour
 of asphalt and concrete, which is most of what wet roads actually look like,
