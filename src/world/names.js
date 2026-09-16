@@ -1,95 +1,89 @@
-/* Errands — the name pools Hollis Bend draws from.
-   Thirty residents, plus the dead in the cemetery, plus the streets. */
+/* Errands — the name pools the quarter draws from.
+   Thirty residents, the work they do, the alleys, and the junk underfoot. */
 (function (ER) {
   'use strict';
 
   ER.Names = {
-    /* deliberately unglamorous, plausible for a rural town of 30 */
-    first: ['Dale', 'Marlene', 'Roy', 'Deb', 'Curtis', 'Janine', 'Wes', 'Trish', 'Arlen',
-      'Bonnie', 'Duane', 'Cheryl', 'Kip', 'Lorna', 'Terrell', 'Angie', 'Hollis', 'Gwen',
-      'Merle', 'Tammy', 'Otis', 'Priya', 'Bo', 'Nadine', 'Grady', 'Shauna', 'Rhett',
-      'Fern', 'Lyle', 'Denise', 'Hank', 'Maribel', 'Clint', 'Rosalie', 'Ed', 'Junie',
-      'Pete', 'Charlene', 'Vern', 'Yolanda', 'Coby', 'Imani', 'Dustin', 'Kelsey'],
+    /* ordinary, plausible for one block of a Lebanese coastal town */
+    first: ['Georges', 'Nadia', 'Elie', 'Rita', 'Tony', 'Layla', 'Charbel', 'Zeina',
+      'Maroun', 'Therese', 'Joseph', 'Mona', 'Fadi', 'Yara', 'Ziad', 'Hiba',
+      'Antoine', 'Nour', 'Rami', 'Amal', 'Sami', 'Rana', 'Michel', 'Maya',
+      'Wadih', 'Leila', 'Najib', 'Dany', 'Khalil', 'Marwan', 'Pierre', 'Hanna',
+      'Milad', 'Salim', 'Boutros', 'Sarkis', 'Jad', 'Karim', 'Randa', 'Tala'],
 
-    last: ['Latham', 'Pell', 'Vandermeer', 'Hobbs', 'Crandall', 'Mott', 'Strait', 'Okafor',
-      'Bergeron', 'Nussbaum', 'Ivey', 'Rask', 'Delgado', 'Prine', 'Stolz', 'Wheat',
-      'Fenno', 'Quarles', 'Ambrose', 'Tidwell', 'Sung', 'Boyer', 'Halter', 'Mundy',
-      'Crick', 'Dowd', 'Pruitt', 'Leaming', 'Vance', 'Bitterman', 'Roush', 'Kettleman'],
+    last: ['Khoury', 'Haddad', 'Sassine', 'Nakhle', 'Rizk', 'Assaf', 'Daher', 'Chami',
+      'Karam', 'Semaan', 'Tannous', 'Zgheib', 'Mansour', 'Saade', 'Younes', 'Ghanem',
+      'Sfeir', 'Maalouf', 'Nassar', 'Gerges', 'Chidiac', 'Bou Khalil', 'El Hage',
+      'Abi Nader', 'Hobeika', 'Mouawad', 'Frangieh', 'Attieh', 'Bejjani', 'Aoun'],
 
-    /* jobs that actually exist in a town this size in the present day */
+    /* work that actually exists in a quarter this size, plus the remote jobs
+       that have arrived in the last ten years and changed nothing visible */
     roles: [
-      { t: 'runs the register at Bend Mart', work: 'bendmart_counter', kind: 'clerk' },
-      { t: 'cooks at the diner', work: 'diner_counter', kind: 'diner' },
-      { t: 'waits tables at the diner', work: 'diner_counter', kind: 'diner' },
-      { t: 'is the postmaster', work: 'postoffice_boxes', kind: 'post' },
-      { t: 'keeps the hardware store', work: 'hardware_counter', kind: 'hardware' },
-      { t: 'teaches the combined 3rd-4th grade', work: 'school_door', kind: 'school' },
-      { t: 'drives the school bus and plows in winter', work: 'busstop', kind: 'bus' },
-      { t: 'does remote support for a logistics company', work: 'home', kind: 'remote' },
-      { t: 'writes technical docs for a company in Seattle', work: 'home', kind: 'remote' },
-      { t: 'is a bookkeeper for four farms and a church', work: 'home', kind: 'remote' },
-      { t: 'does contract web work, mostly for dentists', work: 'home', kind: 'remote' },
-      { t: 'manages a warehouse two towns over', work: 'out', kind: 'commuter' },
-      { t: 'is a nurse, three twelves a week in the city', work: 'out', kind: 'commuter' },
-      { t: 'runs the grain co-op scale', work: 'silo_spill', kind: 'coop' },
-      { t: 'farms the north half of the section', work: 'field_north', kind: 'farm' },
-      { t: 'farms and does custom baling', work: 'field_south', kind: 'farm' },
-      { t: 'fixes small engines out of his garage', work: 'home', kind: 'mechanic' },
-      { t: 'is framing the new house on Elm Court', work: 'construction_frame', kind: 'build' },
-      { t: 'is retired from the state highway department', work: 'home', kind: 'retired' },
-      { t: 'is retired, mostly gardens now', work: 'home', kind: 'retired' },
-      { t: 'is retired and walks the same loop twice a day', work: 'home', kind: 'walker' },
-      { t: 'pastors Trinity Methodist part-time', work: 'church_door', kind: 'pastor' },
-      { t: 'is on disability and restores one lawn tractor', work: 'home', kind: 'retired' },
-      { t: 'is fifteen and is not from here, apparently', work: 'busstop', kind: 'teen' },
-      { t: 'is eleven and has a bike and opinions', work: 'park_hoop', kind: 'kid' },
-      { t: 'is nine and collects things too', work: 'park_swing', kind: 'kid' },
-      { t: 'cleans the school and the church', work: 'school_door', kind: 'custodian' },
-      { t: 'is the volunteer fire chief and also sells insurance', work: 'firehouse_siren', kind: 'fire' },
-      { t: 'does hair in the front room on Tuesdays', work: 'home', kind: 'home_biz' },
+      { t: 'squeezes the lemonade and will not say what else is in it', work: 'lemonade_counter', kind: 'lemonade' },
+      { t: 'runs the furn and has burnt the same two knuckles for thirty years', work: 'furn_counter', kind: 'furn' },
+      { t: 'keeps the dukkan and prints receipts nobody asked for', work: 'dukkan_counter', kind: 'dukkan' },
+      { t: 'stacks the soap into a pyramid every Monday', work: 'sabon_counter', kind: 'sabon' },
+      { t: 'brings the coffee before you have sat down', work: 'qahwe_counter', kind: 'qahwe' },
+      { t: 'cuts hair under a pole that does not turn', work: 'barber_chair', kind: 'barber' },
+      { t: 'fishes, and mends the nets on the quay when he does not', work: 'quay_nets', kind: 'fisher' },
+      { t: 'fishes, and is the one who actually knows the weather', work: 'samke_door', kind: 'fisher' },
+      { t: 'says the morning mass at Saydet el Bahr', work: 'chapel_door', kind: 'priest' },
+      { t: 'unlocks the chapel and counts the candles', work: 'chapel_candles', kind: 'sacristan' },
+      { t: 'sits on her balcony and misses nothing', work: 'teta_balcony', kind: 'teta' },
+      { t: 'waters the pots on three doorsteps that are not hers', work: 'fountain', kind: 'waterer' },
+      { t: 'keeps the generator running and collects for it in cash', work: 'souk_generator', kind: 'generator' },
+      { t: 'drives the service taxi and parks where the souk gives out', work: 'souk_taxi', kind: 'driver' },
+      { t: 'designs websites for a company in Beirut, from the roof', work: 'home', kind: 'remote' },
+      { t: 'does the books for two guesthouses and a diving school', work: 'home', kind: 'remote' },
+      { t: 'edits subtitles for a streaming service, badly paid', work: 'home', kind: 'remote' },
+      { t: 'teaches maths online to children in three time zones', work: 'home', kind: 'remote' },
+      { t: 'runs the guesthouse on Darb el Aaliye, four rooms', work: 'home', kind: 'guesthouse' },
+      { t: 'teaches kiteboarding in summer and nothing in winter', work: 'sea_steps', kind: 'kite' },
+      { t: 'is a nurse at the hospital up the coast, nights', work: 'out', kind: 'commuter' },
+      { t: 'works at the port and is home at seven', work: 'out', kind: 'commuter' },
+      { t: 'is retired from the municipality and inspects everything', work: 'square_bench', kind: 'retired' },
+      { t: 'is retired and repoints the same wall every spring', work: 'home', kind: 'retired' },
+      { t: 'is retired and walks the sea wall twice a day', work: 'wall_channel', kind: 'walker' },
+      { t: 'feeds the cats and denies it', work: 'souk_cat_blue', kind: 'cats' },
+      { t: 'sews at home and takes in from three streets', work: 'home', kind: 'home_biz' },
       { t: 'is home with a toddler and a monitor app', work: 'home', kind: 'parent' },
-      { t: 'delivers for the rural route', work: 'postoffice_boxes', kind: 'post' },
+      { t: 'is nineteen and back for the summer, unimpressed', work: 'qahwe_chairs', kind: 'teen' },
+      { t: 'is eleven, has a bike, and has opinions about the cats', work: 'square_cat', kind: 'kid' },
+      { t: 'is nine and also collects things', work: 'square_cracks', kind: 'kid' },
       { t: 'is between things and honest about it', work: 'home', kind: 'idle' }
     ],
 
-    /* older stock for the graves — the town's dead read a generation back */
-    graveFirst: ['Eunice', 'Alvin', 'Hazel', 'Orville', 'Mabel', 'Clarence', 'Opal', 'Virgil',
-      'Beulah', 'Homer', 'Vesta', 'Emmett', 'Lula', 'Alonzo', 'Effie', 'Wilbur', 'Myrtle',
-      'Ervin', 'Cora', 'Silas', 'Etta', 'Rufus', 'Delia', 'Amos', 'Nola', 'Ezra', 'Ida',
-      'Cyrus', 'Lavina', 'Asa', 'Prudence', 'Willis', 'Minerva', 'Enoch'],
-
-    graveEpitaph: ['GONE HOME', 'AT REST', 'ASLEEP IN JESUS', 'BELOVED WIFE', 'BELOVED HUSBAND',
-      'HE GAVE HIS BEST', 'SHE HATH DONE WHAT SHE COULD', 'FATHER', 'MOTHER',
-      'INFANT SON', 'INFANT DAUGHTER', 'WE SHALL MEET AGAIN', 'RESTING', 'SUFFER THE CHILDREN',
-      'A SOLDIER OF THE REPUBLIC', 'PEACE'],
-
+    /* the alleys */
     streets: {
-      main: 'Main Street',
-      church: 'Church Street',
-      quarry: 'Quarry Road',
-      depot: 'Depot Street',
-      elm: 'Elm Court',
-      cr9: 'County Road 9',
-      mill: 'Old Mill Road'
+      quay: 'Rue de la Mer',
+      souk: 'Souk el Qadim',
+      daraj: 'Darb el Daraj',
+      mina: 'Bab el Mina',
+      zaroub: 'Ez-Zaroub',
+      aliya: 'Darb el Aaliye',
+      tahta: 'Darb et Tahta',
+      sharq: 'Darb esh Sharq'
     },
 
     junk: [
       'a bent washer', 'half a plastic comb', 'a dead lighter', 'a chewed pen cap',
-      'a shard of amber glass, edges gone soft', 'a Popsicle stick, weathered smooth',
-      'a AA battery, leaking', 'a length of orange baler twine', 'a foil gum wrapper',
+      'a scrap of green glass, edges gone soft', 'an ice-cream stick, weathered smooth',
+      'a AA battery, leaking', 'a length of orange net twine', 'a foil gum wrapper',
       'a screw with the head stripped', 'a doll arm', 'a tine off a rake',
-      'a 1997 quarter', 'a brass grommet', 'a shotgun shell, spent, red',
-      'a hair elastic', 'a chunk of asphalt shaped almost like Ohio',
+      'a 500 lira coin from before', 'a brass grommet', 'a fish hook, rusted past use',
+      'a hair elastic', 'a chunk of mortar shaped almost like Cyprus',
       'a bottle cap, crimped, sun-bleached', 'a zip tie, cut',
-      'a piece of window screen, balled up', 'a fishhook, rusted past use',
+      'a piece of window screen, balled up', 'a shred of prayer card',
       'a key to nothing', 'a plastic soldier missing a leg',
-      'a wad of dryer lint that has been rained on', 'a tooth (animal)',
-      'a mud dauber nest, empty', 'a strip of chrome trim',
-      'a golf tee', 'a domino, double blank', 'a fuse',
+      'a cigarette filter the sea has been at', 'a tooth (cat)',
+      'a wasp nest, empty', 'a strip of chrome trim off a Mercedes',
+      'a backgammon piece, white', 'a domino, double blank', 'a fuse',
       'a receipt, illegible', 'a marble with a bubble in it',
-      'the corner of a license plate', 'a staple the size of a staple',
-      'a walnut hull, black', 'a spark plug', 'a pull-tab of the old kind',
-      'a button, four holes, cream', 'a hinge pin', 'a dime, bent'
+      'a corner of a Lebanese licence plate', 'a staple the size of a staple',
+      'an olive pit, ancient', 'a spark plug', 'a pull-tab of the old kind',
+      'a button, four holes, cream', 'a hinge pin', 'a coin, bent',
+      'a pistachio shell', 'a length of shutter slat', 'a sequin',
+      'a shard of blue tile', 'a fragment of terracotta, glazed on one side'
     ]
   };
 })(typeof window !== 'undefined' ? (window.ER = window.ER || {}) : (global.ER = global.ER || {}));

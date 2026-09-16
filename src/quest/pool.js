@@ -1,8 +1,13 @@
 /* Errands — the pool.
  *
- * Forty-six templates. Each one randomises its own specifics, so the pool
- * generates errands in the thousands. No template rewards you. No template
- * refers to any other template. There is no order and there is no end.
+ * Thirty templates here and thirty more next door. Each one randomises its
+ * own specifics, so the pool generates errands in the thousands. No template
+ * rewards you. No template refers to any other template. There is no order
+ * and there is no end.
+ *
+ * Fifty metres of old town means every errand is within ninety seconds' walk
+ * of every other one, which is the joke: you will be back at this fountain
+ * eleven times today for eleven unrelated reasons.
  */
 (function (ER) {
   'use strict';
@@ -37,25 +42,22 @@
   var NOON = { h0: 11.8, h1: 13.5, label: 'in the middle of the day' };
   var WET = ['rain', 'drizzle', 'storm'];
 
-  function anyGrave(rng, town) {
-    return rng.pick(town.cemetery.graves).id;
-  }
-  function anyDish(rng, town) {
-    var ids = [];
+  /* things there are several of, so the errand can name one arbitrarily */
+  function idsTagged(town, tag) {
+    var out = [];
     for (var i = 0; i < town.propList.length; i++)
-      if (town.propList[i].tags.indexOf('dish') >= 0) ids.push(town.propList[i].id);
-    return rng.pick(ids);
+      if (town.propList[i].tags.indexOf(tag) >= 0) out.push(town.propList[i].id);
+    return out;
   }
-  function allDishes(town) {
-    var ids = [];
-    for (var i = 0; i < town.propList.length; i++)
-      if (town.propList[i].tags.indexOf('dish') >= 0) ids.push(town.propList[i].id);
-    return ids;
-  }
-  function anyDandelion(rng) { return rng.pick(['dandelion_park', 'dandelion_ballfield', 'dandelion_cr9']); }
-  function anyMilkweed(rng) { return rng.pick(['milkweed_grade', 'milkweed_pasture']); }
-  function anyDitch(rng) { return rng.pick(['ditch_cr9', 'ditch_cr9_east']); }
-  function anyFencepost(rng) { return rng.pick(['fencepost_0', 'fencepost_1', 'fencepost_2', 'fencepost_3']); }
+  function anyShutter(rng, town) { return rng.pick(idsTagged(town, 'shutter')); }
+  function anyDoor(rng, town) { return rng.pick(idsTagged(town, 'knocker')); }
+  function anyPlate(rng, town) { return rng.pick(idsTagged(town, 'plate')); }
+  function anyPots(rng, town) { return rng.pick(idsTagged(town, 'pot')); }
+  function anyCat(rng, town) { return rng.pick(idsTagged(town, 'cat')); }
+  function anyDish(rng, town) { return rng.pick(idsTagged(town, 'satellite')); }
+  function allCats(town) { return idsTagged(town, 'cat'); }
+  function anyCracks(rng) { return rng.pick(['square_cracks', 'zaroub_cracks', 'daraj_cracks']); }
+  function anyFig(rng) { return rng.pick(['square_fig', 'mahjour_fig']); }
 
   /* ================================================================== *
    *  THE POOL
@@ -65,19 +67,19 @@
 
     /* ---- 1. the one about the jar ---- */
     {
-      id: 'jar_of_creek_water', weight: 3, tags: ['water', 'fiddly'],
+      id: 'jar_of_sea_water', weight: 3, tags: ['water', 'fiddly'],
       setup: function (rng) { return { knots: rng.int(2, 4) }; },
-      title: function () { return 'Collect exactly one glass jar of water from the shallow bend beneath the concrete bridge, seal it, and wrap twine around the rim'; },
-      fine: function (p) { return 'It must be the shallow bend. The deep bend is wrong. ' + U.cap(U.spell(p.knots)) + ' turns of twine, no more.'; },
+      title: function () { return 'Collect exactly one glass jar of sea water from the shallow channel cut through the Phoenician wall, seal it, and wrap twine around the rim'; },
+      fine: function (p) { return 'It must be the shallow channel. The deep one further along is wrong. ' + U.cap(U.spell(p.knots)) + ' turns of twine, no more.'; },
       steps: function (p) {
         return [
-          buy('bendmart_counter', 'jar_empty', 'Buy a glass pint jar at Bend Mart', 'A pint. Not a quart.'),
-          buy('bendmart_counter', 'twine', 'Buy a ball of twine while you are in there'),
-          act({ at: 'creek_shallow_bend', verb: 'FILL', text: 'Fill the jar at the shallow bend beneath the concrete bridge',
-            need: ['jar_empty'], take: ['jar_empty'], give: ['jar_creek'], decoyKey: 'bend' }),
-          make({ verb: 'SEAL', text: 'Seal the jar', need: ['jar_creek'], take: ['jar_creek'], give: ['jar_creek_sealed'] }),
+          buy('dukkan_counter', 'jar_empty', 'Buy a glass jar at the dukkan', 'The small one. Not the olive jar.'),
+          buy('dukkan_counter', 'twine', 'Buy a ball of twine while you are in there'),
+          act({ at: 'wall_channel', verb: 'FILL', text: 'Fill the jar at the shallow channel in the sea wall',
+            need: ['jar_empty'], take: ['jar_empty'], give: ['jar_sea'], decoyKey: 'channel' }),
+          make({ verb: 'SEAL', text: 'Seal the jar', need: ['jar_sea'], take: ['jar_sea'], give: ['jar_sea_sealed'] }),
           make({ verb: 'WRAP', text: 'Wrap ' + U.spell(p.knots) + ' turns of twine around the rim',
-            need: ['jar_creek_sealed', 'twine'], take: ['jar_creek_sealed'], give: ['jar_creek_twined'] })
+            need: ['jar_sea_sealed', 'twine'], take: ['jar_sea_sealed'], give: ['jar_sea_twined'] })
         ];
       }
     },
@@ -86,450 +88,454 @@
     {
       id: 'rusted_nail', weight: 3, tags: ['ruin', 'iron'],
       setup: function () { return {}; },
-      title: function () { return "Find a rusted nail in the most collapsed room of the Vandermeer place"; },
-      fine: function () { return 'The northeast room, where the ceiling came down in 2011. Square nails do not count. It has to be rusted through.'; },
+      title: function () { return 'Find a rusted nail in the room of the abandoned house where the roof came down'; },
+      fine: function () { return 'The room on the zaroub side, where the roof went in the nineties. Square boat nails do not count. It has to be rusted through.'; },
       steps: function () {
         return [
-          find({ at: 'farmhouse_collapsed', item: 'nail_rusted', tries: 4,
-            text: 'Search the collapsed northeast room', fine: 'Mind the joists.' })
+          find({ at: 'mahjour_room', item: 'nail_rusted', tries: 4,
+            text: 'Search the room where the roof came down', fine: 'Mind the beams.' })
         ];
       }
     },
 
     /* ---- 3. the iron spike ---- */
     {
-      id: 'iron_spike', weight: 3, tags: ['rail', 'iron'],
-      setup: function (rng) { return { markers: rng.int(3, 5) }; },
-      title: function () { return 'Walk the old railroad grade and find a discarded iron spike'; },
-      fine: function (p) { return 'Walk it. Do not drive around to the far end. There are ' + U.spell(p.markers) + ' markers to pass.'; },
+      id: 'wall_spike', weight: 2, tags: ['walk', 'iron'],
+      setup: function (rng) { return { from: rng.pick(['sea_steps', 'chapel_step']) }; },
+      title: function () { return 'Walk the whole length of the sea wall and come back with a discarded iron spike'; },
+      fine: function () { return 'The whole length. End to end. The harbour ironwork sheds them and nobody picks them up.'; },
       steps: function (p) {
-        var wps = [];
-        for (var i = 0; i < p.markers; i++) wps.push('rail_walk_' + i);
         return [
-          trek({ waypoints: wps, text: 'Walk the grade past ' + U.spell(p.markers) + ' markers', fine: 'West end to east.' }),
-          find({ at: 'rail_ballast', item: 'spike_iron', tries: 5, text: 'Search the ballast for a discarded spike' })
+          trek({ waypoints: ['sea_steps', 'wall_channel', 'wall_letter', 'wall_third_stone'],
+            text: 'Walk the sea wall from end to end', fine: 'It is forty-odd metres. Do it anyway.' }),
+          find({ at: 'quay_hooks', item: 'spike_iron', tries: 3, verb: 'SEARCH',
+            text: 'Find a spike among the harbour iron', from: p.from })
         ];
       }
     },
 
-    /* ---- 4. the gravestone at dusk ---- */
+    /* ---- 4. the chapel at dusk ---- */
     {
-      id: 'grave_rubbing_dusk', weight: 3, tags: ['cemetery', 'dusk'],
-      setup: function (rng, town) { return { grave: anyGrave(rng, town) }; },
-      title: function (p, town) {
-        var g = town.props[p.grave].grave;
-        return 'Visit the cemetery at dusk and trace the engraving on ' + g.first + ' ' + g.last + "'s stone";
-      },
-      fine: function (p, town) {
-        var g = town.props[p.grave].grave;
-        return g.born + '–' + g.died + '. Dusk specifically. Not afternoon and not dark.';
-      },
-      steps: function (p) {
-        return [
-          buy('hardware_counter', 'paper', 'Buy a sheet of paper'),
-          buy('hardware_counter', 'pencil', 'Buy a carpenter pencil'),
-          act({ at: p.grave, verb: 'TRACE', text: 'Trace the engraving', when: DUSK,
-            need: ['paper', 'pencil'], take: ['paper'], give: ['rubbing'], fine: 'Side of the lead, not the point.' })
-        ];
-      }
-    },
-
-    /* ---- 5. moss, with a spoon ---- */
-    {
-      id: 'moss_with_spoon', weight: 3, tags: ['bridge', 'moss'],
-      setup: function (rng) { return { side: rng.pick(['upstream', 'downstream']) }; },
-      title: function () { return 'Scrape moss off the old stone bridge with a spoon'; },
-      fine: function (p) { return 'The ' + p.side + ' face. A spoon. Not a knife, not a stick, not your thumbnail.'; },
+      id: 'trace_the_letter', weight: 3, tags: ['dusk', 'stone'],
+      setup: function (rng) { return { word: rng.pick(['aleph', 'a hook', 'a tent peg', 'an eye']) }; },
+      title: function () { return 'Go to the sea wall below Saydet el Bahr at dusk and take a rubbing of the letter cut into the stone'; },
+      fine: function (p) { return 'Somebody says it is ' + p.word + '. It has to be at dusk, and it has to be a rubbing, not a drawing.'; },
       steps: function () {
         return [
-          buy('bendmart_counter', 'spoon', 'Acquire a spoon', 'The plastic ones by the coffee are free, which is not the same as acquiring one.'),
-          act({ at: 'bridge_stone_moss', verb: 'SCRAPE', text: 'Scrape the moss into the spoon',
+          buy('dukkan_counter', 'paper', 'Buy a sheet of paper'),
+          buy('dukkan_counter', 'pencil', 'Buy a carpenter pencil'),
+          act({ at: 'wall_letter', verb: 'RUB', when: DUSK, text: 'Rub the letter through the paper',
+            need: ['paper', 'pencil'], take: ['paper'], give: ['rubbing'] })
+        ];
+      }
+    },
+
+    /* ---- 5. moss off the sea wall, with a spoon ---- */
+    {
+      id: 'moss_with_spoon', weight: 3, tags: ['scrape', 'absurd'],
+      setup: function (rng) { return { spoons: rng.pick(['tin', 'tin', 'tin']) }; },
+      title: function () { return 'Scrape the moss off the third stone of the sea wall using a spoon'; },
+      fine: function () { return 'A spoon. Not a knife, not your thumbnail. The third stone from the chapel end, counting the one that is half under.'; },
+      steps: function () {
+        return [
+          buy('dukkan_counter', 'spoon', 'Buy a spoon at the dukkan', 'Nadia will ask what for. Do not explain.'),
+          act({ at: 'wall_third_stone', verb: 'SCRAPE', text: 'Scrape the moss off the third stone',
             need: ['spoon'], take: ['spoon'], give: ['spoon_mossy'] })
         ];
       }
     },
 
-    /* ---- 6. the flattened cap ---- */
+    /* ---- 6. the flattened bottle cap ---- */
     {
-      id: 'flattened_cap', weight: 3, tags: ['lot', 'search'],
-      setup: function () { return {}; },
-      title: function () { return 'Search the old feed store lot for a flattened bottle cap of the pre-twist-off kind'; },
-      fine: function () { return 'Crimped edge, twenty-one teeth. If it unscrews it is not old enough and you will know.'; },
-      steps: function () {
+      id: 'flattened_cap', weight: 3, tags: ['search', 'ground'],
+      setup: function (rng) { return { where: anyCracks(rng) }; },
+      title: function () { return 'Search the paving of the old souk for a flattened bottle cap from before twist-offs'; },
+      fine: function () { return 'Flattened, by feet and years. If it still has a crimp on it, it is too new.'; },
+      steps: function (p) {
         return [
-          find({ at: 'oldlot', item: 'cap_flattened', tries: 5, text: 'Search the cracked asphalt' })
+          find({ at: p.where, item: 'cap_flattened', tries: 5,
+            text: 'Go through the gaps in the paving', fine: 'On your knees, in public.' })
         ];
       }
     },
 
     /* ---- 7. the clay die ---- */
     {
-      id: 'clay_die', weight: 3, tags: ['clay', 'home', 'overnight'],
-      setup: function (rng) { return { pips: rng.pick([6, 6, 6, 4, 8, 20]) }; },
-      title: function (p) { return 'Shape wild clay into a ' + p.pips + '-sided die and sun-dry it on your windowsill'; },
-      fine: function (p) { return 'Dug clay, not bought clay. ' + (p.pips === 20 ? 'Twenty faces. You will get most of them.' : 'It will not be square. Nothing is.'); },
+      id: 'clay_die', weight: 3, tags: ['craft', 'wait'],
+      setup: function (rng) { return { pips: rng.int(1, 6) }; },
+      title: function () { return 'Dig clay from under the sea wall, shape it into a die, and leave it on your windowsill to dry in the sun'; },
+      fine: function (p) { return 'Six faces. The ' + U.spell(p.pips) + ' goes opposite the ' + U.spell(7 - p.pips) + '. It will come out slightly wrong.'; },
       steps: function () {
         return [
-          act({ at: 'clay_bank', verb: 'DIG', text: 'Dig clay out of the cut bank at the end of Old Mill Road', give: ['clay_wild'] }),
-          make({ verb: 'SHAPE', text: 'Shape the clay into a die', need: ['clay_wild'], take: ['clay_wild'], give: ['clay_die'] }),
-          act({ at: 'home_windowsill', verb: 'PLACE', text: 'Put it on your windowsill', need: ['clay_die'] }),
-          act({ at: 'home_windowsill', verb: 'TAKE', text: 'Collect it once the sun has had a day with it',
-            dayOffset: 1, need: ['clay_die'], take: ['clay_die'], give: ['clay_die_dry'],
-            fine: 'Tomorrow. Not tonight.' })
+          act({ at: 'shore_clay', verb: 'DIG', text: 'Dig a lump of clay from under the wall', give: ['clay_wild'] }),
+          make({ verb: 'SHAPE', text: 'Shape the clay into a die',
+            need: ['clay_wild'], take: ['clay_wild'], give: ['clay_die'] }),
+          act({ at: 'home_windowsill', verb: 'PLACE', text: 'Leave the die on your windowsill',
+            need: ['clay_die'] }),
+          hold({ at: 'home_windowsill', seconds: 60, dayOffset: 1, verb: 'WAIT',
+            text: 'Let the sun have it until tomorrow', take: ['clay_die'], give: ['clay_die_dry'] })
         ];
       }
     },
 
     /* ---- 8. the dying streetlamp ---- */
     {
-      id: 'lamp_photo_bw', weight: 3, tags: ['photo', 'night'],
-      setup: function (rng) { return { cycles: rng.int(2, 4) }; },
-      title: function () { return 'Photograph the dying streetlamp on Quarry Road and edit the photograph to high-contrast black and white'; },
-      fine: function (p) { return 'Wait for it to cycle dark ' + U.spell(p.cycles) + ' times first. It is not broken, it is dying, and those are different.'; },
-      steps: function (p) {
-        return [
-          hold({ at: 'streetlamp_dying', seconds: 6 + p.cycles * 4, when: NIGHT, still: true,
-            text: 'Stand under the lamp until it cycles dark ' + U.spell(p.cycles) + ' times' }),
-          snap({ target: 'streetlamp_dying', when: NIGHT, text: 'Photograph the lamp', give: ['photo'] }),
-          retouch({ filter: 'bw', text: 'Edit the photograph to high-contrast black and white',
-            fine: 'Open the journal. Press 1.' })
-        ];
-      }
-    },
-
-    /* ---- 9. ladder rungs ---- */
-    {
-      id: 'count_rungs', weight: 2, tags: ['count', 'tower'],
-      setup: function (rng) { return { from: rng.pick(['the ground', 'the gravel', 'directly beneath it']) }; },
-      title: function (p) { return "Count the rungs on the water tower's ladder from " + p.from + ", then write the number on the back of a Bend Mart receipt"; },
-      fine: function () { return 'From the ground. Do not climb it. The cage counts as rungs; the cage is the point.'; },
-      steps: function () {
-        return [
-          buy('bendmart_counter', 'receipt', 'Get a receipt from Bend Mart', 'Buy anything. Buy the cheapest thing.'),
-          act({ at: 'watertower_ladder', verb: 'COUNT', text: 'Count the rungs from the ground', need: ['receipt'] }),
-          jot({ verb: 'WRITE', text: 'Write the number on the back of the receipt',
-            need: ['receipt'], take: ['receipt'], give: ['receipt_numbered'] })
-        ];
-      }
-    },
-
-    /* ---- 10. three gravels ---- */
-    {
-      id: 'sort_gravel', weight: 2, tags: ['rail', 'sort'],
-      setup: function (rng) { return { n: 3, order: rng.pick(['lightest to darkest', 'darkest to lightest']) }; },
-      title: function (p) { return 'Collect three gravels of three different colours from the railroad ballast and sort them into a matchbox, ' + p.order; },
-      fine: function () { return 'Three colours, not three stones. Grey does not count twice.'; },
-      steps: function (p) {
-        return [
-          buy('bendmart_counter', 'matchbox', 'Get an empty matchbox'),
-          gather({ at: 'rail_ballast', item: 'stone_marker', n: 3, verb: 'PICK',
-            text: 'Pick three gravels of three different colours', fine: 'Wet them to tell. Everything is grey dry.' }),
-          jot({ verb: 'SORT', text: 'Sort them into the matchbox, ' + p.order,
-            need: ['matchbox'], take: ['matchbox', 'stone_marker', 'stone_marker', 'stone_marker'], give: ['gravel_sorted'] })
-        ];
-      }
-    },
-
-    /* ---- 11. eleven seconds ---- */
-    {
-      id: 'eleven_seconds', weight: 2, tags: ['bridge', 'time', 'audio'],
-      setup: function (rng) {
-        var h = rng.int(6, 20), m = rng.pick([7, 11, 14, 19, 23, 37, 41, 53]);
-        return { h: h, m: m, secs: rng.pick([11, 11, 11, 13, 17]) };
-      },
-      title: function (p) {
-        return 'Stand at the exact centre of the concrete bridge at ' + U.clock(p.h, p.m) +
-          ' and record ' + U.spell(p.secs) + ' seconds of whatever is happening';
-      },
-      fine: function (p) { return 'The centre. Pace it off if you have to. ' + U.cap(U.spell(p.secs)) + ' seconds, and if a truck comes, that is the recording.'; },
-      steps: function (p) {
-        var w = { h0: p.h + p.m / 60 - 0.18, h1: p.h + p.m / 60 + 0.25, label: 'at ' + U.clock(p.h, p.m) };
-        return [
-          hold({ at: 'bridge_concrete_center', seconds: p.secs, when: w, still: true, verb: 'RECORD',
-            text: 'Record ' + U.spell(p.secs) + ' seconds from the centre of the bridge', give: ['recording_bridge'] })
-        ];
-      }
-    },
-
-    /* ---- 12. the unmatched sock ---- */
-    {
-      id: 'lone_sock', weight: 2, tags: ['laundromat', 'absurd'],
+      id: 'dying_lamp', weight: 3, tags: ['photo', 'night'],
       setup: function () { return {}; },
-      title: function () { return "Take one sock from the laundromat's lost-and-found, establish that it matches nothing, and fold it anyway"; },
-      fine: function () { return 'One sock. Check it against the whole bin. Then fold it as though it had a partner.'; },
+      title: function () { return 'Photograph the dying streetlamp on the souk and edit the photograph to high-contrast black and white'; },
+      fine: function () { return 'Wait for it to cycle dark three times first. It is not broken, it is dying, and those are different.'; },
       steps: function () {
         return [
-          find({ at: 'laundromat_lostfound', item: 'sock', tries: 2, text: 'Dig a sock out of the lost-and-found bin' }),
-          act({ at: 'laundromat_lostfound', verb: 'SEARCH', text: 'Check it against every other sock in the bin', need: ['sock'], hold: 5.0 }),
-          make({ verb: 'FOLD', text: 'Fold it anyway', need: ['sock'], take: ['sock'], give: ['sock_folded'] })
+          hold({ at: 'souk_lamp', seconds: 14, when: NIGHT, verb: 'STAND',
+            text: 'Stand under the lamp until it cycles dark three times' }),
+          snap({ target: 'souk_lamp', when: NIGHT, text: 'Photograph the lamp', give: ['photo'], maxRange: 10 }),
+          retouch({ filter: 'bw', text: 'Edit the photograph to high-contrast black and white' })
         ];
       }
     },
 
-    /* ---- 13. measuring the diner step ---- */
+    /* ---- 9. the lemonade you may not drink ---- */
     {
-      id: 'measure_step', weight: 2, tags: ['diner', 'measure'],
-      setup: function (rng) { return { what: rng.pick(['width', 'depth', 'rise']) }; },
-      title: function (p) { return "Measure the " + p.what + " of the diner's front step with twine, knot the twine at the measurement, and keep the twine"; },
-      fine: function () { return 'Keep it. There is no plan for it. Keep it.'; },
-      steps: function (p) {
-        return [
-          buy('bendmart_counter', 'twine', 'Buy twine'),
-          act({ at: 'diner_step', verb: 'MEASURE', text: 'Lay the twine across the ' + p.what + ' of the step', need: ['twine'] }),
-          make({ verb: 'KNOT', text: 'Knot the twine at the measurement', need: ['twine'], take: ['twine'], give: ['twine_measure'] })
-        ];
-      }
-    },
-
-    /* ---- 14. photograph every dish ---- */
-    {
-      id: 'dishes_from_below', weight: 2, tags: ['photo', 'walking'],
-      setup: function (rng, town) {
-        var all = allDishes(town);
-        var n = Math.min(all.length, rng.int(4, 7));
-        return { targets: rng.picks(all, n), n: n };
+      id: 'warm_lemonade', weight: 3, tags: ['carry', 'wait'],
+      setup: function (rng) { return { spot: rng.pick(['sea_steps', 'bench_landing', 'square_bench']) }; },
+      title: function (p, town) {
+        var n = town.props[p.spot];
+        return 'Buy a glass of lemonade and carry it to ' + n.name + ' without drinking any of it';
       },
-      title: function (p) { return 'Photograph ' + U.spell(p.n) + ' of the satellite dishes in town from directly below'; },
-      fine: function () { return 'Directly below. If the yard has a dog, that is between you and the dog.'; },
+      fine: function () { return 'Abou Georges leaves the pips in. Carry it until it is warm. Then you may drink it, and it will not be nice.'; },
       steps: function (p) {
         return [
-          snapAll({ targets: p.targets, text: 'Photograph ' + U.spell(p.n) + ' dishes from underneath', maxRange: 7 })
+          buy('lemonade_counter', 'lemonade', 'Buy a glass of lemonade'),
+          hold({ at: p.spot, seconds: 30, verb: 'SIT', text: 'Sit with it until it goes warm',
+            need: ['lemonade'], take: ['lemonade'], give: ['lemonade_warm'] })
         ];
       }
     },
 
-    /* ---- 15. dust off the storage doors ---- */
+    /* ---- 10. the bluest shutter ---- */
     {
-      id: 'storage_dust', weight: 2, tags: ['dust'],
+      id: 'bluest_shutter', weight: 2, tags: ['look', 'colour'],
       setup: function () { return {}; },
-      title: function () { return 'Fill a sandwich bag with the dust from the tops of the self-storage unit doors'; },
-      fine: function () { return 'The tops. Where nobody has ever wiped. You will need to reach.'; },
-      steps: function () {
-        return [
-          buy('bendmart_counter', 'baggie', 'Get a sandwich bag'),
-          act({ at: 'storage_doors', verb: 'WIPE', text: 'Wipe the tops of the doors into the bag',
-            need: ['baggie'], take: ['baggie'], give: ['baggie_dust'], hold: 4.4 })
-        ];
-      }
-    },
-
-    /* ---- 16. the paint chip ---- */
-    {
-      id: 'paint_chip_match', weight: 2, tags: ['ballfield', 'colour'],
-      setup: function (rng) { return { where: rng.pick(['the hydrant with the worst paint', 'the bad hoop at the park', 'the padlocked feed store door']) }; },
-      title: function () { return "Scrape a paint chip off the ballfield backstop's corner post"; },
-      fine: function (p) { return 'Then go hold it up against ' + p.where + ' until you are satisfied about it.'; },
+      title: function () { return 'Decide which shutter in the quarter is the bluest, and photograph it'; },
+      fine: function () { return 'There is a correct answer. Nobody will confirm it.'; },
       steps: function (p, town) {
-        var target = p.where.indexOf('hydrant') >= 0 ? town.worstHydrant
-          : p.where.indexOf('hoop') >= 0 ? 'park_hoop' : 'feedstore_door';
         return [
-          act({ at: 'ballfield_backstop', verb: 'SCRAPE', text: 'Scrape a chip off the corner post', give: ['paintchip'] }),
-          act({ at: target, verb: 'HOLD', text: 'Hold the chip against ' + p.where, need: ['paintchip'] })
+          snap({ target: town.bluestShutter, text: 'Photograph the bluest shutter in the quarter',
+            give: ['photo'], maxRange: 8 })
         ];
       }
     },
 
-    /* ---- 17. penny on the rail ---- */
+    /* ---- 11. count the steps, twice, differently ---- */
     {
-      id: 'penny_on_rail', weight: 2, tags: ['rail', 'overnight'],
+      id: 'count_the_steps', weight: 3, tags: ['count', 'absurd'],
       setup: function () { return {}; },
-      title: function () { return 'Find a penny in the Bend Mart lot, lay it on the old rail, and come back for it tomorrow'; },
-      fine: function () { return 'Nothing runs on that rail and has not since 1986. Come back tomorrow anyway.'; },
+      title: function () { return 'Count the steps of Darb el Daraj going up, count them again coming down, and write down the second number'; },
+      fine: function () { return 'The three at the bottom are the kerb and do not count. The numbers will not agree. Write down the second one.'; },
       steps: function () {
         return [
-          find({ at: 'bendmart_lot', item: 'penny', tries: 4, text: 'Search the Bend Mart lot for a penny' }),
-          act({ at: 'rail_rust', verb: 'PLACE', text: 'Lay the penny on the rail', need: ['penny'], take: ['penny'] }),
-          act({ at: 'rail_rust', verb: 'TAKE', text: 'Come back for it tomorrow', dayOffset: 1, give: ['penny_flat'],
-            fine: 'It will be exactly as you left it. That is the finding.' })
+          buy('dukkan_counter', 'paper', 'Buy a sheet of paper'),
+          buy('dukkan_counter', 'pencil', 'Buy a pencil'),
+          act({ at: 'daraj_steps', verb: 'COUNT', text: 'Count the steps on the way up', decoyKey: 'steps' }),
+          act({ at: 'daraj_steps', verb: 'COUNT', text: 'Count them again on the way down' }),
+          jot({ text: 'Write down the number you got the second time',
+            need: ['paper', 'pencil'], take: ['paper'], give: ['note_count'] })
         ];
       }
     },
 
-    /* ---- 18. forty acorns, four discarded ---- */
+    /* ---- 12. the pips ---- */
     {
-      id: 'forty_acorns', weight: 2, tags: ['gather', 'absurd'],
-      setup: function (rng) { return { total: rng.pick([40, 40, 36, 44]), drop: rng.int(3, 5) }; },
-      title: function (p) { return 'Collect exactly ' + U.spell(p.total) + ' acorns under the oaks by the cemetery, then discard the ' + U.spell(p.drop) + ' heaviest'; },
-      fine: function (p) { return 'Weigh them in your hand. You will be wrong about at least one. Keep ' + (p.total - p.drop) + '.'; },
+      id: 'lemon_pips', weight: 2, tags: ['gather', 'count'],
+      setup: function (rng) { return { n: rng.int(38, 47), drop: rng.int(2, 4) }; },
+      title: function (p) {
+        return 'Collect exactly ' + U.spell(p.n) + ' lemon pips from the tree behind number 6, then discard the ' +
+          U.spell(p.drop) + ' heaviest';
+      },
+      fine: function (p) { return 'Weigh them in your hand. You will be wrong about at least one. Keep ' + (p.n - p.drop) + '.'; },
       steps: function (p) {
         return [
-          gather({ at: 'acorn_ground', item: 'acorn', n: p.total, verb: 'PICK',
-            text: 'Pick ' + U.spell(p.total) + ' acorns' }),
-          jot({ verb: 'DISCARD', text: 'Discard the ' + U.spell(p.drop) + ' heaviest',
-            need: ['acorn'], takeCount: { item: 'acorn', n: p.total }, give: ['acorns_kept'] })
+          gather({ at: 'lemon_tree', item: 'pip', n: p.n, verb: 'PICK',
+            text: 'Pick ' + U.spell(p.n) + ' pips out of the windfalls' }),
+          make({ verb: 'DISCARD', text: 'Discard the ' + U.spell(p.drop) + ' heaviest',
+            need: ['pip'], take: ['pip'], give: ['pips_kept'] })
         ];
       }
     },
 
-    /* ---- 19. wire ring ---- */
+    /* ---- 13. the mismatched plate ---- */
     {
-      id: 'wire_ring', weight: 2, tags: ['craft'],
-      setup: function (rng) { return { ref: rng.pick(['a coffee cup rim', 'the mouth of a pint jar', 'the top of a fence post']) }; },
-      title: function (p) { return 'Wind a length of baling wire into a circle the size of ' + p.ref; },
-      fine: function () { return 'It will be an oval. Wind it again.'; },
-      steps: function () {
-        return [
-          buy('hardware_counter', 'wire_bale', 'Buy a length of baling wire off the spool'),
-          make({ verb: 'WIND', text: 'Wind it into a circle', need: ['wire_bale'], take: ['wire_bale'], give: ['wire_circle'], hold: 5.6 })
-        ];
-      }
-    },
-
-    /* ---- 20. the bulletin board, aloud ---- */
-    {
-      id: 'read_board_aloud', weight: 2, tags: ['public', 'absurd'],
+      id: 'mismatched_plate', weight: 2, tags: ['look', 'note'],
       setup: function () { return {}; },
-      title: function () { return 'Read the entire post office bulletin board aloud'; },
-      fine: function () { return 'All of it. Do not skip the dog.'; },
-      steps: function () {
+      title: function () { return 'Find the house in the quarter whose number plate does not match its number, and write the discrepancy down'; },
+      fine: function () { return 'One of them is wrong. The neighbours know which and will not say, because the man who painted it is dead.'; },
+      steps: function (p, town) {
         return [
-          act({ at: 'postoffice_board', verb: 'READ ALOUD', text: 'Read the board aloud, all of it', hold: 8.0, witnessed: true })
+          buy('dukkan_counter', 'paper', 'Buy a sheet of paper'),
+          buy('dukkan_counter', 'pencil', 'Buy a pencil'),
+          act({ at: 'plate_' + town.mismatchedPlate, verb: 'READ', text: 'Read the plate that is wrong' }),
+          jot({ text: 'Write down the discrepancy',
+            need: ['paper', 'pencil'], take: ['paper'], give: ['note_discrepancy'] })
         ];
       }
     },
 
-    /* ---- 21. one full rain shower ---- */
+    /* ---- 14. the fountain, three times ---- */
     {
-      id: 'sit_out_rain', weight: 2, tags: ['weather', 'meditative'],
-      setup: function (rng) { return { spot: rng.pick(['busstop', 'park_pavilion', 'home_porch']) }; },
-      title: function (p, town) { return 'Sit in ' + town.props[p.spot].name + ' for the length of one full rain shower'; },
-      fine: function () { return 'Until it stops. If it does not stop, that is also an answer.'; },
+      id: 'fountain_temperatures', weight: 2, tags: ['water', 'absurd'],
+      setup: function (rng) { return { gap: rng.int(20, 40) }; },
+      title: function () { return 'Put your hand in the fountain at three different times of day and rank the three temperatures'; },
+      fine: function () { return 'Your hand is the instrument. There is no instrument.'; },
       steps: function (p) {
         return [
-          hold({ at: p.spot, seconds: 30, weather: WET, verb: 'SIT', still: true,
-            text: 'Sit it out', fine: 'It has to actually be raining.' })
+          act({ at: 'fountain', verb: 'TOUCH', when: PREDAWN, text: 'Feel the water before sunrise' }),
+          act({ at: 'fountain', verb: 'TOUCH', when: NOON, text: 'Feel it again in the middle of the day' }),
+          act({ at: 'fountain', verb: 'TOUCH', when: DUSK, text: 'And once more at dusk' }),
+          buy('dukkan_counter', 'paper', 'Buy a sheet of paper'),
+          buy('dukkan_counter', 'pencil', 'Buy a pencil'),
+          jot({ text: 'Rank the three', need: ['paper', 'pencil'], take: ['paper'], give: ['note_ranking'] })
         ];
       }
     },
 
-    /* ---- 22. the tower's shadow ---- */
+    /* ---- 15. the cats ---- */
     {
-      id: 'tower_shadow', weight: 2, tags: ['time', 'mark'],
-      setup: function (rng) { return { h: rng.pick([16, 17, 17, 18]) }; },
-      title: function (p) { return "Find where the cell tower's shadow crosses Quarry Road at " + U.clock(p.h, 0) + ' and mark the spot with a stone'; },
-      fine: function () { return 'A stone you chose. Not the nearest stone.'; },
-      steps: function (p) {
-        var w = { h0: p.h - 0.4, h1: p.h + 0.6, label: 'around ' + U.clock(p.h, 0) };
-        return [
-          gather({ at: 'rail_ballast', item: 'stone_marker', n: 1, verb: 'PICK', text: 'Choose a stone' }),
-          act({ at: 'celltower_shadow', verb: 'MARK', text: "Mark where the shadow crosses the road", when: w,
-            need: ['stone_marker'], take: ['stone_marker'] })
-        ];
-      }
-    },
-
-    /* ---- 23. pond water, settled ---- */
-    {
-      id: 'pond_settle', weight: 2, tags: ['water', 'home', 'overnight'],
+      id: 'every_cat', weight: 2, tags: ['photo', 'cats'],
       setup: function () { return {}; },
-      title: function () { return 'Collect a jar of pond water and let it settle on your windowsill until you can see through it'; },
-      fine: function () { return 'Do not shake it to check. Checking is shaking.'; },
+      title: function () { return 'Photograph every cat in the quarter in one afternoon'; },
+      fine: function () { return 'There are three. There are always three. They are not always the same three.'; },
+      steps: function (p, town) {
+        return [
+          snapAll({ targets: allCats(town), text: 'Photograph all three cats', give: ['photo'], maxRange: 9 })
+        ];
+      }
+    },
+
+    /* ---- 16. the urchin shells ---- */
+    {
+      id: 'urchin_count', weight: 2, tags: ['count', 'sea'],
+      setup: function (rng) { return { take: rng.int(1, 2) }; },
+      title: function () { return 'Count the urchin shells somebody lined up on the sea wall, then take one and put it back the other way round'; },
+      fine: function () { return 'Whoever lines them up will notice. They will not say anything.'; },
       steps: function () {
         return [
-          buy('bendmart_counter', 'jar_empty', 'Buy a jar'),
-          act({ at: 'pond_edge', verb: 'FILL', text: 'Fill it at the pond', need: ['jar_empty'], take: ['jar_empty'], give: ['jar_pond'] }),
-          act({ at: 'home_windowsill', verb: 'PLACE', text: 'Set it on the windowsill', need: ['jar_pond'] }),
-          act({ at: 'home_windowsill', verb: 'TAKE', text: 'Look at it tomorrow', dayOffset: 1,
-            need: ['jar_pond'], take: ['jar_pond'], give: ['jar_pond_settled'] })
+          act({ at: 'wall_urchins', verb: 'COUNT', text: 'Count the shells' }),
+          act({ at: 'wall_urchins', verb: 'TAKE', text: 'Take one', give: ['urchin_shell'] }),
+          act({ at: 'wall_urchins', verb: 'PLACE', text: 'Put it back upside down',
+            need: ['urchin_shell'], take: ['urchin_shell'] })
         ];
       }
     },
 
-    /* ---- 24. the cornerstone rubbing ---- */
+    /* ---- 17. the fig leaf, pressed ---- */
     {
-      id: 'cornerstone_rubbing', weight: 2, tags: ['civic', 'paper'],
-      setup: function () { return {}; },
-      title: function () { return 'Take a rubbing of the date on the town hall cornerstone using paper and the side of a pencil'; },
-      fine: function () { return 'The side. Using the point is a drawing, not a rubbing.'; },
+      id: 'pressed_fig_leaf', weight: 2, tags: ['wait', 'plant'],
+      setup: function (rng) { return { under: rng.pick(['the soap', 'a tile', 'the jar', 'your shoe']) }; },
+      title: function () { return 'Take one leaf from the oldest fig in the quarter and press it flat under something heavy overnight'; },
+      fine: function (p) { return 'The oldest. Not the one by the shrine. Press it under ' + p.under + '.'; },
       steps: function () {
         return [
-          buy('hardware_counter', 'paper', 'Buy paper'),
-          buy('hardware_counter', 'pencil', 'Buy a pencil'),
-          act({ at: 'townhall_cornerstone', verb: 'RUB', text: 'Rub the date through the paper',
-            need: ['paper', 'pencil'], take: ['paper'], give: ['rubbing'] })
+          act({ at: 'square_fig', verb: 'TAKE LEAF', text: 'Take a leaf from the oldest fig',
+            give: ['leaf_fig'], decoyKey: 'fig' }),
+          act({ at: 'home_windowsill', verb: 'PRESS', text: 'Press it flat at home', need: ['leaf_fig'] }),
+          hold({ at: 'home_windowsill', seconds: 60, dayOffset: 1, verb: 'WAIT',
+            text: 'Leave it until the morning', take: ['leaf_fig'], give: ['leaf_pressed'] })
         ];
       }
     },
 
-    /* ---- 25. hubcap on a fence post ---- */
+    /* ---- 18. the mooring ring ---- */
     {
-      id: 'hubcap_balance', weight: 2, tags: ['ditch', 'absurd'],
-      setup: function (rng) { return { ditch: anyDitch(rng), post: anyFencepost(rng) }; },
-      title: function () { return 'Find a hubcap in the ditch along County Road 9 and balance it on a fence post'; },
-      fine: function () { return 'Balance, not hang. It should be able to fall and choose not to.'; },
-      steps: function (p) {
-        return [
-          find({ at: p.ditch, item: 'hubcap', tries: 4, text: 'Search the ditch for a hubcap' }),
-          act({ at: p.post, verb: 'BALANCE', text: 'Balance it on a fence post', need: ['hubcap'], take: ['hubcap'] })
-        ];
-      }
-    },
-
-    /* ---- 26. the correct mint ---- */
-    {
-      id: 'church_mint', weight: 2, tags: ['plant', 'precision'],
-      setup: function () { return {}; },
-      title: function () { return 'Pick the mint growing behind the church'; },
-      fine: function () { return 'Behind the church. Not the mint behind the diner. They are the same plant and this is not the point.'; },
+      id: 'ring_of_rust', weight: 2, tags: ['scrape', 'iron'],
+      setup: function (rng) { return { bag: rng.pick(['bag', 'matchbox']) }; },
+      title: function () { return 'Scrape a pinch of rust off the mooring ring in the sea wall and keep it in a matchbox'; },
+      fine: function () { return 'A pinch. Not a handful. The ring has been there longer than the wall has been useless.'; },
       steps: function () {
         return [
-          act({ at: 'church_mint', verb: 'PICK', text: 'Pick the church mint', give: ['mint_church'], decoyKey: 'mint' })
+          buy('dukkan_counter', 'matchbox', 'Buy an empty matchbox'),
+          act({ at: 'wall_mooring', verb: 'SCRAPE', text: 'Scrape the ring',
+            need: ['matchbox'], give: ['rust_pinch'] })
         ];
       }
     },
 
-    /* ---- 27. the drain that echoes ---- */
+    /* ---- 19. the chapel bell, from the square ---- */
     {
-      id: 'echo_drain', weight: 2, tags: ['absurd', 'sound'],
-      setup: function (rng) { return { word: rng.pick(['your own name', 'the name of the town', 'one word of your choosing, and mean it', '"hello", flatly', 'the day of the week']) }; },
-      title: function (p) { return 'Find the storm drain on Depot Street that echoes and say ' + p.word + ' into it'; },
-      fine: function () { return 'Only one of the drains echoes. The others are just drains, and you will have to check.'; },
-      steps: function () {
-        return [
-          act({ at: 'storm_drain_echo', verb: 'SPEAK', text: 'Say it into the drain', decoyKey: 'echo', witnessed: true })
-        ];
-      }
-    },
-
-    /* ---- 28. three nails in a row ---- */
-    {
-      id: 'three_nails', weight: 2, tags: ['construction', 'sort'],
-      setup: function (rng) { return { order: rng.pick(['shortest first', 'longest first']) }; },
-      title: function (p) { return 'Find three nails of three different lengths in the scrap pile on Elm Court and stand them in a row, ' + p.order; },
-      fine: function () { return 'Standing. On their heads. On gravel. Yes.'; },
+      id: 'bell_from_square', weight: 2, tags: ['listen', 'record'],
+      setup: function (rng) { return { secs: rng.int(9, 16) }; },
+      title: function (p) { return 'Record ' + U.spell(p.secs) + ' seconds of the chapel bell from the fountain square, not from the chapel'; },
+      fine: function () { return 'From the square. The whole point is the distance.'; },
       steps: function (p) {
         return [
-          gather({ at: 'construction_scrap', item: 'nail_rusted', n: 3, verb: 'SEARCH',
-            text: 'Find three nails of three different lengths', hold: 2.4 }),
-          jot({ verb: 'SORT', text: 'Stand them in a row, ' + p.order,
-            need: ['nail_rusted'], takeCount: { item: 'nail_rusted', n: 3 }, give: ['nails_three'] })
+          hold({ at: 'fountain', seconds: p.secs, still: true, verb: 'LISTEN',
+            text: 'Stand at the fountain and listen for the bell', give: ['recording_bells'] })
         ];
       }
     },
 
-    /* ---- 29. the cicada skin ---- */
+    /* ---- 20. the three nails ---- */
     {
-      id: 'cicada_skin', weight: 2, tags: ['woods', 'delicate'],
+      id: 'three_nails', weight: 2, tags: ['search', 'iron'],
       setup: function () { return {}; },
-      title: function () { return 'Collect the dried skin of one cicada from the treeline, intact'; },
-      fine: function () { return 'Intact. The legs are the problem. The legs are always the problem.'; },
+      title: function () { return 'Find three nails of three different lengths in the abandoned house and lay them out shortest to longest'; },
+      fine: function () { return 'Three different lengths. Two the same is a failure and you will know.'; },
       steps: function () {
         return [
-          find({ at: 'treeline', item: 'cicada_skin', tries: 5, text: 'Search the treeline for a cicada skin' })
+          find({ at: 'mahjour_room', item: 'nails_three', tries: 6,
+            text: 'Search the fallen room for nails' }),
+          make({ verb: 'SORT', text: 'Lay them out shortest to longest', need: ['nails_three'] })
         ];
       }
     },
 
-    /* ---- 30. the OPEN sign, off ---- */
+    /* ---- 21. the wire ring ---- */
     {
-      id: 'sign_off_photo', weight: 2, tags: ['photo', 'night'],
+      id: 'wire_to_the_cup', weight: 2, tags: ['craft', 'fiddly'],
       setup: function () { return {}; },
-      title: function () { return "Photograph the diner's OPEN sign while it is off"; },
-      fine: function () { return 'It goes off at eight. The photograph has to be of the sign, not of the window.'; },
+      title: function () { return 'Wind a length of wire to exactly the rim of a coffee cup from the qahwe'; },
+      fine: function () { return 'The cup goes back. The wire does not.'; },
       steps: function () {
         return [
-          snap({ target: 'diner_sign', when: { h0: 20.2, h1: 5.5, label: 'after the diner closes' },
-            text: 'Photograph the sign, off', give: ['photo'], maxRange: 12 })
+          buy('qahwe_counter', 'coffee', 'Buy a finjan of coffee'),
+          buy('qahwe_counter', 'wire_fish', 'Take a length of wire off the chair frame'),
+          make({ verb: 'WIND', text: 'Wind the wire to the rim of the cup',
+            need: ['coffee', 'wire_fish'], take: ['wire_fish'], give: ['wire_circle'] })
+        ];
+      }
+    },
+
+    /* ---- 22. the shaved soap ---- */
+    {
+      id: 'shaved_soap', weight: 2, tags: ['craft', 'absurd'],
+      setup: function (rng) { return { corner: rng.pick(['top left', 'bottom right', 'the corner nearest the stamp']) }; },
+      title: function (p) { return 'Buy a bar of olive-oil soap and shave exactly one corner off it — ' + p.corner; },
+      fine: function () { return 'Rita will wrap it. Unwrap it in front of her and do it there.'; },
+      steps: function () {
+        return [
+          buy('sabon_counter', 'soap_bar', 'Buy a bar of soap'),
+          make({ at: 'sabon_counter', verb: 'CHIP', text: 'Shave one corner off it',
+            need: ['soap_bar'], take: ['soap_bar'], give: ['soap_shaved'] })
+        ];
+      }
+    },
+
+    /* ---- 23. the jasmine, unopened ---- */
+    {
+      id: 'nine_jasmine', weight: 2, tags: ['gather', 'plant'],
+      setup: function (rng) { return { n: rng.int(7, 11) }; },
+      title: function (p) { return 'Pick ' + U.spell(p.n) + ' jasmine flowers out of the zaroub, none of them open'; },
+      fine: function () { return 'Closed. If one opens in your hand you have to start the count again, and you will not.'; },
+      steps: function (p) {
+        return [
+          gather({ at: 'zaroub_jasmine', item: 'jasmine_head', n: p.n, verb: 'PICK',
+            text: 'Pick ' + U.spell(p.n) + ' closed flowers' }),
+          make({ verb: 'PLACE', text: 'Set them out on your windowsill', at: 'home_windowsill',
+            need: ['jasmine_head'], take: ['jasmine_head'], give: ['jasmine_nine'] })
+        ];
+      }
+    },
+
+    /* ---- 24. the broken tile ---- */
+    {
+      id: 'the_broken_tile', weight: 2, tags: ['look', 'measure'],
+      setup: function (rng) { return { knots: rng.int(1, 3) }; },
+      title: function () { return 'Measure the crack in the one broken tile in the fountain square with twine, and knot the twine at the measurement'; },
+      fine: function (p) { return U.cap(U.spell(p.knots)) + ' knot' + (p.knots > 1 ? 's' : '') + '. The crack has not moved in forty years.'; },
+      steps: function () {
+        return [
+          buy('dukkan_counter', 'twine', 'Buy a ball of twine'),
+          act({ at: 'square_tile', verb: 'MEASURE', text: 'Lay the twine along the crack', need: ['twine'] }),
+          make({ verb: 'KNOT', text: 'Knot the twine at the measurement',
+            need: ['twine'], take: ['twine'], give: ['twine_measure'] })
+        ];
+      }
+    },
+
+    /* ---- 25. the wires ---- */
+    {
+      id: 'count_the_wires', weight: 2, tags: ['count', 'photo'],
+      setup: function () { return {}; },
+      title: function () { return 'Count the wires leaving the pole on the souk, then photograph it so you can be told you are wrong'; },
+      fine: function () { return 'Nobody agrees on the number. Everybody has a number.'; },
+      steps: function () {
+        return [
+          act({ at: 'souk_wires', verb: 'COUNT', text: 'Count the wires' }),
+          snap({ target: 'souk_wires', text: 'Photograph the knot of wires', give: ['photo'], maxRange: 9 })
+        ];
+      }
+    },
+
+    /* ---- 26. the generator ---- */
+    {
+      id: 'generator_changes_mind', weight: 2, tags: ['listen', 'wait'],
+      setup: function (rng) { return { secs: rng.int(18, 30) }; },
+      title: function () { return 'Stand by the generator until it changes its mind, and record the moment it does'; },
+      fine: function () { return 'It changes its mind about twice an hour. You will hear it before you notice it.'; },
+      steps: function (p) {
+        return [
+          hold({ at: 'souk_generator', seconds: p.secs, still: true, verb: 'LISTEN',
+            text: 'Wait for the generator to falter', give: ['recording_gen'] })
+        ];
+      }
+    },
+
+    /* ---- 27. the capers ---- */
+    {
+      id: 'caper_piles', weight: 2, tags: ['gather', 'count'],
+      setup: function () { return {}; },
+      title: function () { return 'Take the pods off one caper plant in the sea wall and count the seed into two equal piles'; },
+      fine: function () { return 'One plant. If the count is odd, one seed goes in your pocket and the piles are equal.'; },
+      steps: function () {
+        return [
+          act({ at: 'wall_capers', verb: 'PICK', text: 'Take the pods off one caper', give: ['caper_pods'] }),
+          make({ verb: 'SORT', text: 'Count the seed into two equal piles',
+            need: ['caper_pods'], take: ['caper_pods'], give: ['caper_split'] })
+        ];
+      }
+    },
+
+    /* ---- 28. the warm stone ---- */
+    {
+      id: 'warmest_stone', weight: 2, tags: ['touch', 'absurd'],
+      setup: function (rng) { return { side: rng.pick(['south', 'west']) }; },
+      title: function (p) { return 'Find the warmest stone on the ' + p.side + ' wall of the abandoned house in the afternoon'; },
+      fine: function () { return 'With the back of your hand. The front of your hand is no good for this and everyone knows it.'; },
+      steps: function () {
+        return [
+          act({ at: 'mahjour_room', verb: 'TOUCH', when: { h0: 14.5, h1: 17.5, label: 'in the afternoon' },
+            text: 'Feel along the wall for the warmest stone' })
+        ];
+      }
+    },
+
+    /* ---- 29. the laundry ---- */
+    {
+      id: 'count_the_washing', weight: 2, tags: ['count', 'photo'],
+      setup: function (rng) { return { item: rng.pick(['socks', 'shirts', 'pegs', 'things that are white']) }; },
+      title: function (p) { return 'Count the ' + p.item + ' on the line across Darb el Aaliye before anybody takes it in'; },
+      fine: function () { return 'Before they take it in. After that the number is a memory and does not count.'; },
+      steps: function () {
+        return [
+          act({ at: 'aliya_laundry', verb: 'COUNT', when: { h0: 8.0, h1: 16.0, label: 'while it is still out' },
+            text: 'Count the washing' }),
+          snap({ target: 'aliya_laundry', text: 'Photograph the line', give: ['photo'], maxRange: 10 })
+        ];
+      }
+    },
+
+    /* ---- 30. the shrine ---- */
+    {
+      id: 'stone_in_the_niche', weight: 2, tags: ['place', 'quiet'],
+      setup: function (rng) { return { word: rng.pick(['sorry', 'again', 'thank you', 'nothing']) }; },
+      title: function () { return 'Choose one stone off the shore, carry it to the niche in the fountain square, and leave it there'; },
+      fine: function (p) { return 'Say one word when you put it down. Say "' + p.word + '". Nobody is listening.'; },
+      steps: function () {
+        return [
+          find({ at: 'shore_clay', item: 'stone_niche', tries: 3, verb: 'SEARCH',
+            text: 'Choose a stone off the shore' }),
+          act({ at: 'square_shrine', verb: 'PLACE', text: 'Leave the stone in the niche',
+            need: ['stone_niche'], take: ['stone_niche'] }),
+          act({ at: 'square_shrine', verb: 'SPEAK', text: 'Say the word', witnessed: true })
         ];
       }
     }

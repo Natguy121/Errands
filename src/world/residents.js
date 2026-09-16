@@ -248,40 +248,46 @@
    * ------------------------------------------------------------------ */
 
   var ROUTINES = {
-    clerk:     [[6, 'home'], [7, 'bendmart_counter'], [15.5, 'diner_counter'], [16.5, 'home']],
-    diner:     [[5, 'home'], [5.75, 'diner_counter'], [14.5, 'home'], [17, 'bendmart_counter'], [18, 'home']],
-    post:      [[7, 'home'], [8, 'postoffice_boxes'], [12, 'diner_counter'], [13, 'postoffice_boxes'], [16.5, 'home']],
-    hardware:  [[7, 'home'], [7.75, 'hardware_counter'], [12, 'diner_counter'], [13, 'hardware_counter'], [17.5, 'home']],
-    school:    [[6.5, 'home'], [7.5, 'school_door'], [15.75, 'bendmart_counter'], [16.5, 'home']],
-    custodian: [[5, 'home'], [6, 'school_door'], [11, 'church_door'], [14, 'school_door'], [17, 'home']],
-    bus:       [[5.5, 'home'], [6.5, 'busstop'], [9, 'home'], [14.5, 'busstop'], [16.5, 'home']],
-    pastor:    [[7, 'home'], [9, 'church_door'], [12.5, 'diner_counter'], [14, 'church_door'], [17, 'home']],
-    coop:      [[6.5, 'home'], [7.5, 'silo_spill'], [12, 'diner_counter'], [13, 'silo_spill'], [16, 'home']],
-    farm:      [[5, 'home'], [6, 'field_north'], [11.5, 'diner_counter'], [12.5, 'field_north'], [19, 'home']],
-    build:     [[6, 'home'], [7, 'construction_frame'], [12, 'diner_counter'], [12.75, 'construction_frame'], [16.5, 'home']],
-    fire:      [[7, 'home'], [8.5, 'firehouse_siren'], [11.75, 'firehouse_siren'], [12.5, 'diner_counter'], [13.5, 'home']],
-    mechanic:  [[7.5, 'home'], [8.5, 'home'], [12, 'diner_counter'], [13, 'home'], [17, 'bendmart_counter'], [18, 'home']],
-    remote:    [[8, 'home'], [12.25, 'home'], [13, 'home'], [17.5, 'home'], [18.5, 'bendmart_counter'], [19.5, 'home']],
-    commuter:  [[5.5, 'home'], [6, 'out'], [18.5, 'home'], [19.5, 'bendmart_counter'], [20, 'home']],
-    retired:   [[7, 'home'], [9, 'home'], [10.5, 'postoffice_boxes'], [11.5, 'diner_counter'], [13, 'home'], [16, 'home']],
-    walker:    [[6.5, 'home'], [7, 'LOOP'], [9, 'home'], [11, 'diner_counter'], [12, 'home'], [16.5, 'LOOP'], [18.5, 'home']],
-    parent:    [[7.5, 'home'], [10, 'park_swing'], [11.5, 'home'], [15.5, 'park_swing'], [17, 'home']],
-    home_biz:  [[8, 'home'], [9, 'home'], [12.5, 'diner_counter'], [13.5, 'home'], [17, 'home']],
-    kid:       [[7, 'home'], [8, 'school_door'], [15.25, 'park_hoop'], [17.5, 'bendmart_counter'], [18.5, 'home']],
-    teen:      [[7, 'home'], [7.5, 'busstop'], [16, 'busstop'], [17, 'bendmart_counter'], [19, 'park_hoop'], [21, 'home']],
-    idle:      [[9, 'home'], [11, 'bendmart_counter'], [12.5, 'diner_counter'], [14, 'park_pavilion'], [17, 'home']]
+    lemonade:  [[7, 'home'], [8, 'lemonade_counter'], [13.5, 'qahwe_counter'], [14.5, 'lemonade_counter'], [20, 'home']],
+    furn:      [[4.5, 'home'], [5.25, 'furn_counter'], [13, 'home'], [16, 'furn_counter'], [19, 'home']],
+    dukkan:    [[6.5, 'home'], [7.5, 'dukkan_counter'], [14, 'qahwe_counter'], [15, 'dukkan_counter'], [21, 'home']],
+    sabon:     [[8, 'home'], [9, 'sabon_counter'], [13, 'qahwe_counter'], [14, 'sabon_counter'], [18.5, 'home']],
+    qahwe:     [[6, 'home'], [6.75, 'qahwe_counter'], [15, 'home'], [16.5, 'qahwe_counter'], [22.5, 'home']],
+    barber:    [[8, 'home'], [9, 'barber_chair'], [13, 'qahwe_counter'], [14, 'barber_chair'], [19, 'home']],
+    fisher:    [[4, 'home'], [4.5, 'quay_boat'], [10, 'quay_nets'], [12.5, 'qahwe_counter'], [14, 'quay_nets'], [18, 'home']],
+    priest:    [[6, 'home'], [6.5, 'chapel_door'], [9, 'home'], [17.5, 'chapel_door'], [19, 'home']],
+    sacristan: [[5.5, 'home'], [6, 'chapel_candles'], [10, 'chapel_door'], [13, 'home'], [17, 'chapel_candles'], [19.5, 'home']],
+    teta:      [[7, 'home'], [8, 'teta_balcony'], [12.5, 'home'], [15.5, 'teta_balcony'], [20.5, 'home']],
+    waterer:   [[6, 'home'], [6.75, 'fountain'], [8.5, 'home'], [17.5, 'fountain'], [19, 'home']],
+    generator: [[7, 'home'], [8, 'souk_generator'], [12, 'qahwe_counter'], [13, 'souk_generator'], [18, 'home']],
+    driver:    [[6, 'home'], [6.5, 'souk_taxi'], [12.5, 'qahwe_counter'], [13.5, 'souk_taxi'], [19.5, 'home']],
+    remote:    [[8, 'home'], [12.25, 'home'], [13, 'qahwe_counter'], [14, 'home'], [18.5, 'dukkan_counter'], [19.5, 'home']],
+    guesthouse:[[7, 'home'], [8, 'home'], [11, 'dukkan_counter'], [12, 'home'], [17, 'qahwe_counter'], [18.5, 'home']],
+    kite:      [[8, 'home'], [10, 'sea_steps'], [13, 'qahwe_counter'], [14.5, 'sea_steps'], [19, 'home']],
+    commuter:  [[5.5, 'home'], [6, 'out'], [18.5, 'home'], [19.5, 'dukkan_counter'], [20, 'home']],
+    retired:   [[7, 'home'], [9, 'square_bench'], [11.5, 'qahwe_counter'], [13, 'home'], [16.5, 'square_bench'], [18.5, 'home']],
+    walker:    [[6.5, 'home'], [7, 'LOOP'], [9, 'home'], [11, 'qahwe_counter'], [12, 'home'], [16.5, 'LOOP'], [18.5, 'home']],
+    cats:      [[6.5, 'home'], [7.25, 'souk_cat_blue'], [9, 'home'], [17, 'quay_cat'], [18.5, 'home']],
+    parent:    [[7.5, 'home'], [10, 'fountain'], [11.5, 'home'], [15.5, 'square_cat'], [17, 'home']],
+    home_biz:  [[8, 'home'], [9, 'home'], [12.5, 'dukkan_counter'], [13.5, 'home'], [17, 'home']],
+    kid:       [[7, 'home'], [8, 'out'], [14.5, 'square_cat'], [17.5, 'dukkan_counter'], [18.5, 'home']],
+    teen:      [[8.5, 'home'], [11, 'qahwe_chairs'], [14, 'sea_steps'], [17, 'qahwe_chairs'], [22, 'home']],
+    idle:      [[9, 'home'], [11, 'square_bench'], [12.5, 'qahwe_counter'], [14, 'sea_steps'], [17, 'home']]
   };
 
-  /* Saturday and Sunday get shorter, looser days */
+  /* Saturday and Sunday get shorter, looser days, and mass is at nine */
   var WEEKEND = {
-    clerk: [[7, 'home'], [8, 'bendmart_counter'], [14, 'home']],
-    diner: [[6, 'home'], [6.5, 'diner_counter'], [13, 'home']],
-    pastor: [[8, 'home'], [9.5, 'church_door'], [12.5, 'home']],
-    DEFAULT: [[8, 'home'], [10, 'bendmart_counter'], [11.5, 'diner_counter'], [13, 'home'], [16, 'park_pavilion'], [18, 'home']]
+    furn: [[5, 'home'], [5.75, 'furn_counter'], [12, 'home']],
+    qahwe: [[7, 'home'], [7.75, 'qahwe_counter'], [23, 'home']],
+    priest: [[7.5, 'home'], [8.5, 'chapel_door'], [12, 'home']],
+    sacristan: [[7, 'home'], [8, 'chapel_candles'], [12, 'home']],
+    DEFAULT: [[8.5, 'home'], [9, 'chapel_door'], [10.5, 'qahwe_counter'], [12.5, 'home'],
+      [16.5, 'square_bench'], [18, 'sea_steps'], [20, 'home']]
   };
 
-  var LOOP = ['park_pavilion', 'busstop', 'bendmart_counter', 'townhall_cornerstone',
-    'postoffice_board', 'diner_step', 'hydrant_0', 'park_hoop'];
+  /* the loop the retired walk twice a day, which is most of the quarter */
+  var LOOP = ['square_bench', 'fountain', 'souk_sign', 'wall_channel', 'sea_steps',
+    'chapel_step', 'bench_landing', 'daraj_steps'];
 
   var CLOTHES = ['#6d7a63', '#4f5a68', '#8a6f58', '#7a4f4a', '#586b72', '#9a8f74',
     '#4a4f56', '#6b5f7a', '#7d8a86', '#a6907a', '#3f4a42', '#8f6a4f'];
@@ -297,11 +303,16 @@
     var people = [];
     var surnameByLot = {};
 
+    /* One surname per house, and thirty people across eighteen houses, so
+       most doors have two names behind them. Fifty metres of old town holds
+       families, not thirty unrelated strangers. */
+    town.lots.forEach(function (l, li) { surnameByLot[l.id] = lasts[li % lasts.length]; });
+
     for (var i = 0; i < 30; i++) {
-      var lot = town.lots[i];
+      var lotIndex = i % town.lots.length;
+      var lot = town.lots[lotIndex];
       var role = roles[i % roles.length];
-      var last = lasts[i % lasts.length];
-      surnameByLot[lot.id] = last;
+      var last = surnameByLot[lot.id];
       var age = role.kind === 'kid' ? rng.int(8, 11)
         : role.kind === 'teen' ? rng.int(14, 17)
         : role.kind === 'retired' || role.kind === 'walker' ? rng.int(66, 86)
@@ -318,7 +329,7 @@
         kind: role.kind,
         workProp: role.work,
         home: lot.id,
-        lotIndex: i,
+        lotIndex: lotIndex,
         x: lot.front.x, y: lot.front.y,
         facing: 0,
         colour: rng.pick(CLOTHES),

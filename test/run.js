@@ -57,12 +57,39 @@ function mockGame(town) {
 }
 
 /* ---------------- 1. the town ---------------- */
-var town = ER.generateTown('hollis bend');
-ok(town.lots.length === 30, 'expected 30 house lots, got ' + town.lots.length);
+var town = ER.generateTown('batroun');
+ok(town.lots.length === 18, 'expected 18 houses, got ' + town.lots.length);
 ok(town.propList.length > 150, 'expected a lot of props, got ' + town.propList.length);
-ok(town.cemetery.graves.length > 30, 'cemetery is too empty');
 ok(!town.isBlocked(town.spawn.x, town.spawn.y), 'you spawn inside a wall');
-ok(town.w * town.h === 4000000, 'the town should be four square kilometres');
+ok(town.w * town.h === 2500, 'the quarter should be fifty metres by fifty');
+
+/* Fifty metres is small enough that a house in the wrong place blocks an
+   alley outright, so the generator checks its own geometry and we check that
+   it found nothing. This caught twenty-three faults the first time it ran. */
+(function () {
+  var problems = town.validateLayout();
+  ok(problems.length === 0, 'layout faults: ' + problems.join('; '));
+}());
+
+/* the sea has to be west of the wall and the wall has to be standable */
+ok(town.terrainAt(2, 25) === 'water', 'there should be open sea at the west edge');
+ok(town.heightAt(2, 25) < 0, 'the sea floor should be below the water line');
+ok(town.terrainAt(town.sea.wall.x, 25) === 'wall', 'the Phoenician wall should read as wall');
+ok(town.heightAt(town.sea.wall.x, 25) > 1.4, 'the wall crest should stand above the quay');
+ok(town.isBlocked(2, 25), 'you should not be able to walk out to sea');
+
+/* and Darb el Daraj has to actually be stairs */
+(function () {
+  var climb = town.heightAt(20.7, 9.0) - town.heightAt(20.7, 26.4);
+  ok(climb > 2.0, 'the alley of steps should climb more than two metres; it climbs ' + climb.toFixed(2));
+  var risers = 0, prev = null;
+  for (var y = 26.4; y >= 8.6; y -= 0.1) {
+    var h = Math.round(town.heightAt(20.7, y) / 0.17) * 0.17;
+    if (prev !== null && Math.abs(h - prev) > 0.08) risers++;
+    prev = h;
+  }
+  ok(risers > 10, 'the steps should be steps; found ' + risers + ' risers');
+}());
 
 /* the whole road graph must be one piece, or residents get stranded */
 (function () {
@@ -95,46 +122,63 @@ ok(town.w * town.h === 4000000, 'the town should be four square kilometres');
 })();
 
 /* Reaching a prop you are standing on. This calls the real pickProp, on a
-   stub whose crosshair sees nothing, standing 2.6 m from the moss on the old
-   stone bridge -- inside the prop's own 3.2 m radius and inside the hit volume
-   the crosshair uses, but further out than the flat 2.2 m the fallback used to
-   allow. The crosshair cannot rescue you from in there either: the only
-   intersection is the far wall of the volume, and for a 3.2 m sphere entered
-   near one edge that lands at 5.6 m, past the 5.4 m it reaches. So the thing
-   was unpickable exactly when you were standing on it. */
+   stub whose crosshair sees nothing, standing at the outer edge of a prop's
+   own radius.
+
+   At four square kilometres this caught a real bug on a specific prop: the
+   moss on the old stone bridge had a 3.2 m hit volume against a flat 2.2 m
+   reach cap, so it went unpickable exactly when you stood on it -- and the
+   crosshair could not rescue you, because from inside a hit volume the only
+   intersection is the far wall, which for a 3.2 m sphere lands past the
+   5.4 m the crosshair reaches. Fifty metres of old town has no props that
+   wide, so this now pins the rule instead of the instance. */
 (function () {
   if (!ER.Game) { ok(false, 'game.js did not load, so pickProp is untested'); return; }
-  var moss = town.props.bridge_stone_moss;
-  ok(moss && moss.r > 2.2, 'this test needs a prop wider than the old 2.2 m cap');
-  if (!moss) return;
-  var pos = town.propPos(moss);
-  function standingAt(dy) {
+  var widest = null;
+  town.propList.forEach(function (p) {
+    if (p.rect || p.hidden) return;
+    if (!widest || p.r > widest.r) widest = p;
+  });
+  ok(!!widest, 'there should be a widest round prop');
+  if (!widest) return;
+  var pos = town.propPos(widest);
+  function standingAt(d) {
     return ER.Game.prototype.pickProp.call({
       town: town,
-      player: { x: pos.x, y: pos.y + dy },
-      director: { currentStep: function () { return null; } },
+      player: { x: pos.x, y: pos.y + d },
+      director: { currentStep: function () { return { at: widest.id }; } },
       view: { pick: function () { return null; } },
       scene3d: { raycastTargets: [] }
     });
   }
-  var on = standingAt(0.5);
-  ok(on && on.id === 'bridge_stone_moss',
-    'standing on the bridge moss picks ' + (on ? on.id : 'nothing'));
-  var out = standingAt(2.6);
-  ok(out && out.id === 'bridge_stone_moss',
-    'standing 2.6 m from the bridge moss, inside its ' + moss.r +
-    ' m radius, picks ' + (out ? out.id : 'nothing'));
-  /* but a wide prop must not be interactable from across a field */
-  var away = standingAt(12);
-  ok(!away || away.id !== 'bridge_stone_moss',
-    'the moss should not be reachable from 12 m away');
+  var on = standingAt(0.1);
+  ok(on && on.id === widest.id,
+    'standing on ' + widest.id + ' picks ' + (on ? on.id : 'nothing'));
+  var edge = standingAt(widest.r - 0.05);
+  ok(edge && edge.id === widest.id,
+    'standing at the edge of its own ' + widest.r + ' m radius picks ' +
+    (edge ? edge.id : 'nothing'));
+  var away = standingAt(widest.r + 5);
+  ok(!away || away.id !== widest.id,
+    widest.id + ' should not be reachable from five metres outside it');
+
+  /* and the rule: a prop's reach may never be tighter than its own hit
+     volume, which is clamp(r, 0.6, 3.2) -- see buildHitVolumes. */
+  var tight = [];
+  town.propList.forEach(function (p) {
+    if (p.rect || p.hidden) return;
+    var reach = Math.max(2.2, Math.min(p.r, 3.2));
+    var volume = Math.max(0.6, Math.min(p.r, 3.2));
+    if (reach + 1e-9 < volume) tight.push(p.id);
+  });
+  ok(tight.length === 0, 'props whose reach is tighter than their hit volume: ' + tight.join(', '));
 }());
 
 /* Paved ground has to read as paved. The renderer and terrainAt work off the
    same town.paving, and when they did not, grass grew through the front walk. */
 (function () {
-  var PAVED = { asphalt: 1, concrete: 1, gravel: 1, dirt: 1 };
-  ok(town.paving.length > 10, 'the town should have paving in it');
+  var PAVED = { stone: 1, steps: 1, flag: 1, quay: 1, slip: 1, wall: 1 };
+  ok(town.paving.length >= 4, 'the quarter should have paving in it');
   var soft = [];
   for (var i = 0; i < town.paving.length; i++) {
     var p = town.paving[i];
@@ -322,6 +366,9 @@ function solve(tplId) {
 }
 
 POOL.forEach(function (tpl) {
+  /* VERBOSE=1 names each template as it is solved, which is how you find the
+     one that hangs rather than the one that fails. */
+  if (process.env.VERBOSE) process.stdout.write('   solving ' + tpl.id + '\n');
   var err = solve(tpl.id);
   ok(!err, tpl.id + ': ' + err);
 });
@@ -347,7 +394,12 @@ POOL.forEach(function (tpl) {
   var d = new ER.Director(g);
   d.issue('rusted_nail');
   var first = d.active;
-  while (d.active === first) d.perform(town.props.farmhouse_collapsed);
+  /* Guarded. An unguarded version of this loop hung the suite for two
+     minutes when the prop id went stale, instead of failing in a line. */
+  var spins = 0, ruin = town.props.mahjour_room;
+  ok(!!ruin, 'the abandoned house should exist');
+  while (d.active === first && ++spins < 500) d.perform(ruin);
+  ok(spins < 500, 'performing at the abandoned house never finished the errand');
   ok(!!d.active && d.active !== first, 'no errand followed the finished one');
   ok(g.stats.errands === 1, 'completion was not reported');
   ok(d.history.length === 1, 'nothing was written in the journal');
@@ -487,13 +539,13 @@ if (ER.populate) {
   g.director = d;
   g.view = { pos: { x: 1234.5, y: 0, z: 678.25 }, yaw: 1.25, pitch: -0.2 };
   g.people = ER.populate ? ER.populate(town, new ER.RNG('savepeople')) : [];
-  g.discovered = { bendmart_counter: 1, cemetery_gate: 1 };
+  g.discovered = { dukkan_counter: 1, chapel_door: 1 };
   g.milestones = { m10: 1 };
   g.town = town;
   g.clock.minutes = 17 * 60 + 42;
   g.clock.day = 9;
   d.issue('moss_with_spoon');
-  d.perform(town.props.bendmart_counter);            /* this buys the spoon */
+  d.perform(town.props.dukkan_counter);              /* this buys the spoon */
   g.stats.walked = 4321.5;
   if (g.people.length) { g.people[0].met = true; g.people[0].seen = 5; g.people[0].witnessed = 2; }
 
@@ -509,7 +561,7 @@ if (ER.populate) {
   ok(raw.clock.day === 9, 'the save lost the day');
   ok(raw.stats.walked === 4321.5, 'the save lost the distance walked');
   ok(raw.inv.spoon >= 1, 'the save lost what was in your pockets');
-  ok(raw.discovered.cemetery_gate === 1, 'the save lost the places you had found');
+  ok(raw.discovered.chapel_door === 1, 'the save lost the places you had found');
   ok(raw.milestones.m10 === 1, 'the save lost the milestones');
   ok(!!raw.director.active && raw.director.active.tplId === 'moss_with_spoon',
     'the save lost the errand you were on');
@@ -540,7 +592,7 @@ if (fails.length === 0) {
   console.log('  ' + checks + ' checks passed.');
   console.log('  ' + POOL.length + ' errand templates, all solvable.');
   console.log('  ' + town.propList.length + ' interactable things in ' +
-    (town.w / 1000 * town.h / 1000) + ' km².');
+    (town.w * town.h) + ' square metres.');
   console.log('  town, errands, residents, clock and saves all check out.');
   console.log('');
   process.exit(0);
