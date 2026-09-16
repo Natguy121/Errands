@@ -228,42 +228,31 @@
         height: h, width: dw.w, lift: 0.048, step: 2, uvPerMetre: tiles[dw.kind]
       }), mats[dw.kind]);
     }
-    /* your own driveway and walk */
-    batch.add('pad_concrete', G.ribbon([[679.5, 1130], [679.5, 1116]], {
-      height: h, width: 3.2, lift: 0.048, step: 2, uvPerMetre: TILE.concrete }), mats.concrete);
+    /* your own front walk, and any other poured strip */
+    for (i = 0; i < town.pavedStrips.length; i++) {
+      var st = town.pavedStrips[i];
+      batch.add('pad_' + st.kind, G.ribbon([[st.x0, st.y0], [st.x1, st.y1]], {
+        height: h, width: st.w, lift: 0.048, step: 2, uvPerMetre: tiles[st.kind]
+      }), mats[st.kind]);
+    }
 
-    var pads = [
-      [1000, 946, 78, 38, 'asphalt'],      /* Bend Mart */
-      [1224, 1050, 62, 44, 'asphalt'],     /* the old feed store lot */
-      [1224, 1006, 60, 11, 'gravel'],      /* the alley */
-      [878, 1190, 66, 22, 'asphalt'],      /* school blacktop */
-      [650, 1222, 30, 20, 'asphalt'],      /* the park court */
-      [1390, 1182, 68, 13, 'gravel'],      /* storage apron */
-      [1464, 1106, 34, 22, 'gravel'],      /* recycling drop-off */
-      [1516, 1232, 104, 60, 'gravel'],     /* co-op yard */
-      [1122, 1234, 68, 42, 'dirt'],        /* the new build */
-      [1656, 396, 80, 74, 'dirt'],         /* the Vandermeer yard */
-      [562, 650, 50, 34, 'gravel'],        /* cemetery turnaround */
-      [886, 1008, 50, 10, 'concrete'],     /* the walk in front of the diner */
-      [1000, 984, 82, 5, 'concrete'],      /* the walk at Bend Mart */
-      [1090, 1008, 76, 9, 'concrete'],     /* post office and laundromat walk */
-      [874, 920, 290, 5, 'concrete']       /* the north side of Main, such as it is */
-    ];
-    for (i = 0; i < pads.length; i++) {
-      var p = pads[i];
-      var segX = Math.max(2, Math.round(p[2] / 10)), segZ = Math.max(2, Math.round(p[3] / 10));
-      var g = new T.PlaneGeometry(p[2], p[3], segX, segZ);
+    /* the lots, aprons and walks, taken from the town so that terrainAt
+       agrees with what is actually on the ground */
+    for (i = 0; i < town.paving.length; i++) {
+      var p = town.paving[i];
+      var segX = Math.max(2, Math.round(p.w / 10)), segZ = Math.max(2, Math.round(p.h / 10));
+      var g = new T.PlaneGeometry(p.w, p.h, segX, segZ);
       g.rotateX(-Math.PI / 2);
       var pos = g.attributes.position, uv = g.attributes.uv;
-      var cx = p[0] + p[2] / 2, cz = p[1] + p[3] / 2;
+      var cx = p.x + p.w / 2, cz = p.y + p.h / 2;
       for (var k = 0; k < pos.count; k++) {
         var wx = pos.getX(k) + cx, wz = pos.getZ(k) + cz;
         pos.setY(k, h(wx, wz) + 0.05);
-        uv.setXY(k, wx * tiles[p[4]], wz * tiles[p[4]]);
+        uv.setXY(k, wx * tiles[p.kind], wz * tiles[p.kind]);
       }
       g.computeVertexNormals();
       g.translate(cx, 0, cz);
-      batch.add('pad_' + p[4], g, mats[p[4]]);
+      batch.add('pad_' + p.kind, g, mats[p.kind]);
     }
     var built = batch.build(this.root, { castShadow: false });
     for (var m = 0; m < built.length; m++) built[m].receiveShadow = true;

@@ -43,45 +43,65 @@
     return t;
   };
 
+  /* Colour and cutout as two separate textures.
+     A single RGBA canvas cannot carry both: the browser stores canvas pixels
+     premultiplied, so anything with alpha 0 comes back with its colour gone,
+     and filtering then blends the visible blades toward black. An opaque
+     colour map plus a greyscale alpha map has no such problem. */
   S.grassTexture = function (tall) {
     var key = tall ? '_grassTall' : '_grassTuft';
     if (this[key]) return this[key];
-    var S2 = 128;
-    var cv = document.createElement('canvas');
-    cv.width = S2; cv.height = S2;
-    var c = cv.getContext('2d');
-    c.clearRect(0, 0, S2, S2);
+    var SZ = 128;
+    var base = tall ? '#a3a566' : '#7d9450';
+    var colour = document.createElement('canvas');
+    colour.width = colour.height = SZ;
+    var cc = colour.getContext('2d');
+    var mask = document.createElement('canvas');
+    mask.width = mask.height = SZ;
+    var mc = mask.getContext('2d');
+
+    cc.fillStyle = base;
+    cc.fillRect(0, 0, SZ, SZ);
+    mc.fillStyle = '#000';
+    mc.fillRect(0, 0, SZ, SZ);
+
     var rng = new ER.RNG(key);
-    var base = tall ? '#878a4e' : '#5d7136';
-    var n = tall ? 30 : 42;
+    var n = tall ? 34 : 46;
     for (var i = 0; i < n; i++) {
-      var x = rng.float(8, S2 - 8);
-      var w = rng.float(2.0, 4.6);
-      var top = rng.float(tall ? 4 : 28, tall ? 34 : 74);
-      var lean = rng.float(-18, 18);
-      var g = c.createLinearGradient(0, top, 0, S2);
+      var x = rng.float(6, SZ - 6);
+      var w = rng.float(2.4, 5.4);
+      var top = rng.float(tall ? 4 : 26, tall ? 32 : 76);
+      var lean = rng.float(-20, 20);
       var hue = rng.pick(tall
-        ? ['#9a9c58', '#a7ad66', '#828648', '#b0a86a']
-        : ['#6a8040', '#79904c', '#576c34', '#8d9553']);
-      g.addColorStop(0, hue);
-      g.addColorStop(0.55, hue);
-      g.addColorStop(1, '#42502a');
-      c.fillStyle = g;
-      c.beginPath();
-      c.moveTo(x - w / 2, S2);
-      c.quadraticCurveTo(x - w / 4 + lean * 0.5, (top + S2) / 2, x + lean, top);
-      c.quadraticCurveTo(x + w / 4 + lean * 0.5, (top + S2) / 2, x + w / 2, S2);
-      c.closePath();
-      c.fill();
+        ? ['#b6b96e', '#c3c87c', '#a0a560', '#cdc684']
+        : ['#8aa257', '#9ab066', '#7a9049', '#a6b46c']);
+      var grad = cc.createLinearGradient(0, top, 0, SZ);
+      grad.addColorStop(0, hue);
+      grad.addColorStop(0.55, hue);
+      /* only a little darker at the root: a blade of grass in sunlight is not
+         a silhouette, and making it one is what reads as black */
+      grad.addColorStop(1, tall ? '#7e8248' : '#5f7539');
+
+      function blade(ctx, style) {
+        ctx.fillStyle = style;
+        ctx.beginPath();
+        ctx.moveTo(x - w / 2, SZ);
+        ctx.quadraticCurveTo(x - w / 4 + lean * 0.5, (top + SZ) / 2, x + lean, top);
+        ctx.quadraticCurveTo(x + w / 4 + lean * 0.5, (top + SZ) / 2, x + w / 2, SZ);
+        ctx.closePath();
+        ctx.fill();
+      }
+      blade(cc, grad);
+      blade(mc, '#fff');
     }
-    ER.Mats.bleedAlpha(cv, base);
-    var t = new T.CanvasTexture(cv);
-    t.colorSpace = T.SRGBColorSpace;
-    t.anisotropy = 8;
-    t.generateMipmaps = true;
-    t.minFilter = T.LinearMipmapLinearFilter;
-    this[key] = t;
-    return t;
+
+    var map = new T.CanvasTexture(colour);
+    map.colorSpace = T.SRGBColorSpace;
+    map.anisotropy = 8;
+    var alpha = new T.CanvasTexture(mask);
+    alpha.anisotropy = 8;
+    this[key] = { map: map, alpha: alpha };
+    return this[key];
   };
 
   /* ---------------- trees ---------------- */
@@ -149,11 +169,11 @@
 
     var leafMat = new T.MeshStandardMaterial({
       map: this.leafTexture('broad'), roughness: 0.88, metalness: 0,
-      vertexColors: true, side: T.DoubleSide
+      side: T.FrontSide
     });
     var pineMat = new T.MeshStandardMaterial({
       map: this.leafTexture('conifer'), roughness: 0.9, metalness: 0,
-      vertexColors: true, side: T.DoubleSide
+      side: T.FrontSide
     });
 
     /* trunks for everything */
@@ -170,7 +190,9 @@
     var coneGeo = (function () {
       var geos = [];
       for (var c = 0; c < 3; c++) {
-        var cg = new T.ConeGeometry(1 - c * 0.26, 1.15, 9, 1, true);
+        /* capped, so the cone is closed and can render single-sided without
+           showing its own inside */
+        var cg = new T.ConeGeometry(1 - c * 0.26, 1.15, 9, 1, false);
         cg.translate(0, 0.35 + c * 0.62, 0);
         geos.push(cg);
       }
@@ -183,45 +205,79 @@
 
   /* ---------------- grass that keeps up with you ---------------- */
 
+  /* Per-instance colour comes from instanceColor, and never from
+     material.vertexColors -- setting that flag on geometry with no colour
+     attribute is what turned every leaf, blade and lit window black. three
+     defines USE_COLOR from the flag alone, without checking the attribute is
+     there, so the vertex shader runs `vColor *= color` against the default
+     generic attribute value, which is (0,0,0,1). Everything multiplied out to
+     zero. USE_INSTANCING_COLOR is a separate define driven only by the buffer
+     existing, and the fragment prefix declares vColor for it too, so dropping
+     the flag keeps the tint and the emissive patches working.
+
+     The buffer does have to exist before the program is built, though: three
+     reads object.instanceColor when it picks the defines, so allocate it up
+     front, all white, or the first compile misses it and every colour set
+     later is silently ignored. */
+  function whiteInstanceColours(inst) {
+    var white = new T.Color(1, 1, 1);
+    for (var i = 0; i < inst.count; i++) inst.setColorAt(i, white);
+    if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+    return inst;
+  }
+
   S.buildGrass = function () {
     var town = this.town;
+    /* Six cards at sixty-degree intervals rather than three double-sided ones.
+       With DoubleSide, three flips the normal on every back face -- and since
+       these normals are forced to point up, a flipped one points down and gets
+       lit by the ground colour instead of the sky, which turns half of every
+       tuft black. Giving each card its own outward-facing twin costs the same
+       triangles and lights correctly from any angle. */
     var tuft = (function () {
       var geos = [];
-      for (var q = 0; q < 3; q++) {
+      for (var q = 0; q < 6; q++) {
         var p = new T.PlaneGeometry(1, 1);
         p.translate(0, 0.5, 0);
-        p.rotateY((q / 3) * Math.PI);
+        p.rotateY((q / 6) * Math.PI * 2);
         geos.push(p);
       }
       return G.upNormals(G.merge(geos));
     })();
 
+    var gt = this.grassTexture(false);
     var mat = new T.MeshStandardMaterial({
-      map: this.grassTexture(false), alphaTest: 0.28, side: T.DoubleSide,
-      roughness: 0.92, metalness: 0, vertexColors: true
+      map: gt.map, alphaMap: gt.alpha, alphaTest: 0.42, side: T.FrontSide,
+      roughness: 0.92, metalness: 0
     });
-    var COUNT = 9000;
+    var COUNT = 6000;
     var inst = new T.InstancedMesh(tuft, mat, COUNT);
     inst.castShadow = false;
-    inst.receiveShadow = true;
+    /* no shadow receive: a blade of grass is two centimetres wide and the
+       lookup would run for every fragment of every card in the near field,
+       which is the one thing here that can fill an entire frame */
+    inst.receiveShadow = false;
     inst.name = 'grass';
     inst.frustumCulled = false;
+    whiteInstanceColours(inst);
     this.root.add(inst);
-    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 21 };
+    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 18 };
 
     /* the taller stuff that grows where nobody mows */
+    var wt = this.grassTexture(true);
     var weedMat = new T.MeshStandardMaterial({
-      map: this.grassTexture(true), alphaTest: 0.28, side: T.DoubleSide,
-      roughness: 0.92, metalness: 0, vertexColors: true
+      map: wt.map, alphaMap: wt.alpha, alphaTest: 0.42, side: T.FrontSide,
+      roughness: 0.92, metalness: 0
     });
-    var WCOUNT = 2600;
+    var WCOUNT = 1800;
     var weeds = new T.InstancedMesh(tuft, weedMat, WCOUNT);
     weeds.castShadow = false;
-    weeds.receiveShadow = true;
+    weeds.receiveShadow = false;
     weeds.name = 'weeds';
     weeds.frustumCulled = false;
+    whiteInstanceColours(weeds);
     this.root.add(weeds);
-    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 34 };
+    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 26 };
   };
 
   /* Redistribute the tufts when you have walked far enough to notice, a slice
@@ -254,8 +310,10 @@
         var r = Math.sqrt(rng.next()) * set.radius;
         var x = camX + Math.cos(a) * r, z = camZ + Math.sin(a) * r;
         var terr = town.terrainAt(x, z);
+        /* nobody mows the ditches, the verges or the grade; everybody mows
+           their yard, so the tall stuff stays out of them */
         var ok = tall
-          ? (terr === 'grass' || terr === 'field' || terr === 'ballast')
+          ? (terr === 'field' || terr === 'ballast')
           : (terr === 'grass' || terr === 'woods' || terr === 'field');
         if (!ok || town.isBlocked(x, z)) {
           m.makeScale(0, 0, 0);
@@ -263,8 +321,8 @@
           set.mesh.setMatrixAt(i, m);
           continue;
         }
-        var sc = tall ? rng.float(0.34, 0.72) : rng.float(0.13, 0.27);
-        var wide = sc * rng.float(1.5, 2.6);
+        var sc = tall ? rng.float(0.32, 0.66) : rng.float(0.11, 0.21);
+        var wide = sc * rng.float(1.8, 3.0);
         e.set(0, rng.float(0, 6.2832), 0);
         q.setFromEuler(e);
         m.compose(new T.Vector3(x, h(x, z) - 0.03, z), q, new T.Vector3(wide, sc, wide));
@@ -339,7 +397,7 @@
     lensGeo.rotateX(Math.PI);
     var lensMat = new T.MeshStandardMaterial({
       color: 0x2a2a26, roughness: 0.3, metalness: 0.1,
-      emissive: new T.Color(0xffe6ac), emissiveIntensity: 1.0, vertexColors: true
+      emissive: new T.Color(0xffe6ac), emissiveIntensity: 1.0
     });
     lensMat.onBeforeCompile = function (shader) {
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -886,10 +944,10 @@
     ];
     var tuftGeo = (function () {
       var geos = [];
-      for (var q = 0; q < 2; q++) {
+      for (var q = 0; q < 4; q++) {
         var p = new T.PlaneGeometry(1, 1);
         p.translate(0, 0.5, 0);
-        p.rotateY((q / 2) * Math.PI);
+        p.rotateY((q / 4) * Math.PI * 2);
         geos.push(p);
       }
       return G.upNormals(G.merge(geos));
@@ -910,12 +968,13 @@
         }
       }
       if (!items.length) continue;
+      var pt = this.grassTexture(true);
       var mat = new T.MeshStandardMaterial({
-        map: this.grassTexture(true), alphaTest: 0.28, side: T.DoubleSide,
+        map: pt.map, alphaMap: pt.alpha, alphaTest: 0.42, side: T.FrontSide,
         color: new T.Color(sp.col), roughness: 0.9
       });
       var inst = new T.InstancedMesh(tuftGeo, mat, items.length);
-      inst.castShadow = false; inst.receiveShadow = true;
+      inst.castShadow = false; inst.receiveShadow = false;
       var m = new T.Matrix4(), q2 = new T.Quaternion(), e = new T.Euler();
       var rng2 = new ER.RNG('patchrot' + s);
       for (var j = 0; j < items.length; j++) {

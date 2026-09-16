@@ -98,23 +98,6 @@
     return out;
   }
 
-  /* An alpha-tested cutout whose transparent pixels are RGBA(0,0,0,0) gets a
-     black fringe: bilinear filtering blends the visible colour toward that
-     black, and on something as thin as a blade of grass almost every pixel on
-     screen is an edge pixel, so the whole thing reads black. Bleeding the
-     base colour out into the transparent region fixes it without touching
-     the alpha channel the cutout depends on. */
-  function bleedAlpha(cv, hex) {
-    var ctx = cv.getContext('2d');
-    var img = ctx.getImageData(0, 0, cv.width, cv.height);
-    var d = img.data, c = U.parseHex(hex);
-    for (var i = 0; i < d.length; i += 4) {
-      if (d[i + 3] < 250) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
-    }
-    ctx.putImageData(img, 0, 0);
-    return cv;
-  }
-
   function tex(cv, repeat, colorSpace) {
     var t = new T.CanvasTexture(cv);
     t.wrapS = t.wrapT = T.RepeatWrapping;
@@ -537,6 +520,5 @@
   }
 
   ER.Mats = { mat: mat, flat: flat, maps: maps, tex: tex, canvas: canvas,
-    normalMap: normalMap, roughMap: roughMap, noiseFill: noiseFill,
-    bleedAlpha: bleedAlpha, SIZE: SIZE };
+    normalMap: normalMap, roughMap: roughMap, noiseFill: noiseFill, SIZE: SIZE };
 })(window.ER = window.ER || {});

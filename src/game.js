@@ -8,7 +8,9 @@
   var U = ER.U;
   var T = window.THREE;
 
-  var LINGER = 22;          /* how much faster the clock runs while you stand there */
+  /* Standing still runs the clock an hour a second, so waiting for dusk or
+     for the noon siren costs seconds rather than minutes. */
+  var LINGER = 60;
 
   function Game(canvas, seed) {
     this.cv = canvas;
@@ -107,7 +109,12 @@
           [585, 668, Math.PI * 1.15, 19.0],    /* the cemetery at dusk */
           [1455, 1012, Math.PI * 0.5, 15.0],   /* the bridge, in the rain */
           [1694, 450, Math.PI, 16.0],          /* the Vandermeer place */
-          [1176, 892, Math.PI, 14.0]           /* under the water tower */
+          [1673, 417, Math.PI * 0.4, 16.0],    /* inside the collapsed room */
+          [1176, 892, Math.PI, 14.0],          /* under the water tower */
+          [1296, 706, Math.PI * 1.25, 22.4],   /* the dying lamp on Quarry Road */
+          [1255, 1072, Math.PI, 13.0],         /* the old feed store lot */
+          [880, 1385, Math.PI * 0.5, 8.5],     /* the grade */
+          [1399, 1690, Math.PI * 0.5, 13.0]    /* the stone bridge */
         ];
         var keepMin = g.clock.minutes, keepWx = g.clock.weather;
         var keep = { x: g.view.pos.x, z: g.view.pos.z, yaw: g.view.yaw };
@@ -125,8 +132,8 @@
           if (g.rain) g.rain.update(g.clock, g.view.camera.position, 1 / 60, g.town.heightAt);
           g.view.renderer.compile(g.view.scene, g.view.camera);
           g.view.render();
-          /* and once into the offscreen target a photograph uses, so that
-             path is warm for every material too */
+          /* and into the offscreen target a photograph uses, so that path is
+             warm for these materials too */
           g.view.snapshot(g.photoSize.w, g.photoSize.h);
         }
 
@@ -150,6 +157,16 @@
         }
         g.clock.fogAmt = 0;
         if (g.puddles) g.puddles.update(0);
+
+        /* and each mode once, because every one composites differently */
+        var modes = ['camera', 'map', 'journal', 'play'];
+        for (var m = 0; m < modes.length; m++) {
+          g.mode = modes[m];
+          if (modes[m] === 'journal') g.hud._journalStamp = null;
+          g.render();
+          g.render();
+        }
+        g.mode = 'play';
         g.clock.minutes = keepMin;
         g.clock.weather = keepWx;
         g.clock.wet = 0;
@@ -417,7 +434,7 @@
       var wp = this.town.props[wanted];
       if (wp && wp.rect && this.town.inProp(wp, this.player.x, this.player.y, 0)) return wp;
     }
-    var hit = this.view.pick(this.scene3d.raycastTargets, 5.4);
+    var hit = this.view.pick(this.scene3d.raycastTargets, 5.4, wanted);
     if (hit) {
       var p = this.town.props[hit.propId];
       if (p) return p;

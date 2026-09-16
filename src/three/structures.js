@@ -39,8 +39,7 @@
     var geo = new T.PlaneGeometry(1, 1);
     var mat = new T.MeshStandardMaterial({
       color: 0xffffff, roughness: 0.06, metalness: 0.22,
-      emissive: new T.Color(0xffd9a0), emissiveIntensity: 1.0,
-      vertexColors: true
+      emissive: new T.Color(0xffd9a0), emissiveIntensity: 1.0
     });
     /* let the per-instance colour drive the glow, so each house can be dark
        or lit without its own material */
@@ -740,27 +739,38 @@
   };
 
   /* chain link, as an alpha-tested texture */
+  /* Chain link, as a colour map plus an alpha map for the same reason the
+     grass needs one: a canvas cannot carry a clean cutout in its own alpha. */
   S.chainlinkTexture = function () {
     if (this._chain) return this._chain;
-    var cv = document.createElement('canvas');
-    cv.width = cv.height = 64;
-    var c = cv.getContext('2d');
-    c.clearRect(0, 0, 64, 64);
-    c.strokeStyle = 'rgba(170,176,172,0.95)';
-    c.lineWidth = 2.2;
-    for (var i = -64; i < 128; i += 12) {
-      c.beginPath(); c.moveTo(i, 0); c.lineTo(i + 64, 64); c.stroke();
-      c.beginPath(); c.moveTo(i + 64, 0); c.lineTo(i, 64); c.stroke();
+    var SZ = 64;
+    var colour = document.createElement('canvas');
+    colour.width = colour.height = SZ;
+    var cc = colour.getContext('2d');
+    var mask = document.createElement('canvas');
+    mask.width = mask.height = SZ;
+    var mc = mask.getContext('2d');
+    cc.fillStyle = '#aab0ac';
+    cc.fillRect(0, 0, SZ, SZ);
+    mc.fillStyle = '#000';
+    mc.fillRect(0, 0, SZ, SZ);
+    mc.strokeStyle = '#fff';
+    mc.lineWidth = 2.2;
+    for (var i = -SZ; i < SZ * 2; i += 12) {
+      mc.beginPath(); mc.moveTo(i, 0); mc.lineTo(i + SZ, SZ); mc.stroke();
+      mc.beginPath(); mc.moveTo(i + SZ, 0); mc.lineTo(i, SZ); mc.stroke();
     }
-    /* same black-fringe problem as the grass: bleed the wire colour outward */
-    ER.Mats.bleedAlpha(cv, '#aab0ac');
-    var t = new T.CanvasTexture(cv);
-    t.wrapS = t.wrapT = T.RepeatWrapping;
-    t.repeat.set(14, 5);
-    t.colorSpace = T.SRGBColorSpace;
-    t.anisotropy = 8;
+    var map = new T.CanvasTexture(colour);
+    map.wrapS = map.wrapT = T.RepeatWrapping;
+    map.repeat.set(14, 5);
+    map.colorSpace = T.SRGBColorSpace;
+    map.anisotropy = 8;
+    var alpha = new T.CanvasTexture(mask);
+    alpha.wrapS = alpha.wrapT = T.RepeatWrapping;
+    alpha.repeat.set(14, 5);
+    alpha.anisotropy = 8;
     this._chain = new T.MeshStandardMaterial({
-      map: t, transparent: true, alphaTest: 0.35, side: T.DoubleSide,
+      map: map, alphaMap: alpha, alphaTest: 0.45, side: T.DoubleSide,
       roughness: 0.5, metalness: 0.6
     });
     return this._chain;

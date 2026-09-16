@@ -32,8 +32,14 @@ npx http-server -p 8099 -s .     # or: python3 -m http.server 8099
 Then open **http://localhost:8099/** and press **Move in**.
 
 Requires WebGL2 and a mouse (it takes a pointer lock to look around).
-Progress saves itself to your browser every twenty-five seconds and on every
-new day.
+A day in Hollis Bend takes twenty-four real minutes. Progress saves itself
+every twenty-five seconds and on every new day.
+
+The loading bar spends its last step drawing the town from twelve vantage
+points and cycling every weather state and every overlay screen. That is deliberate: shader programs,
+and especially the shadow-depth variants, otherwise compile the first time you
+actually see each material, so walking into town or catching the first shower
+would hitch. Better to pay for it once, behind the bar.
 
 ### Controls
 
@@ -44,7 +50,7 @@ new day.
 | **Shift** | run |
 | **Ctrl** / **Q** | crouch |
 | **E** (hold) | do the thing |
-| **Z** | linger — the clock runs twenty-two times faster while you stand still |
+| **Z** | linger — the clock runs an hour a second while you stand still |
 | **C** | raise the camera · **Space** shutter |
 | **1** | apply high-contrast black and white to a photograph |
 | **M** | map · **J** journal |
@@ -151,17 +157,34 @@ Checks town invariants, that the resident walk graph is fully connected, that
 every interactable has somewhere to stand, that every errand template refers
 only to props, items and verbs that exist — and then drives all sixty
 templates to completion with a solver, so nothing in the pool can be
-unfinishable.
+unfinishable. It also checks the clock (a day really is twenty-four real
+minutes, dusk really lasts long enough to trace a gravestone in) and
+round-trips a save, errand and step position included.
 
 ```sh
 npx http-server -p 8099 -s . &
-node test/browser.js
+node test/browser.js              # add SHOOT=1 to save screenshots to .shots/
 ```
 
-Builds the world in Chromium, drives it with real key events, picks things out
-with the crosshair, searches a ruin, photographs a streetlamp, completes an
-errand, opens every screen, reloads a save, and fails on any console error.
-Screenshots land in `.shots/`.
+Builds the world in Chromium, drives it with real key events and mouse-look,
+checks eye height over four kinds of ground, picks things out with the
+crosshair, searches a ruin, photographs a streetlamp and applies the edit,
+completes an errand, checks the resident rigs are standing on the ground
+rather than in it, opens every screen, lingers, times a frame, reloads a save,
+and fails on any console error or uncaught exception.
+
+Two flags, both for headless containers where the only GPU is a software
+rasteriser:
+
+- `SHOOT=1` saves screenshots. Off by default: reading pixels back out of a
+  software rasteriser takes tens of seconds, unpredictably.
+- `QUICK=1` skips the three stages that need a real compositor — the
+  sightseeing tour, opening the overlay screens, and taking a photograph.
+  Headless Chromium never produces a composited frame on its own, because it
+  treats the page as hidden and throttles both `requestAnimationFrame` and
+  timers; so the first time a layer or a readback surface is needed, it gets
+  created synchronously inside whatever call is running. Everything else runs,
+  including the whole errand loop. Drop `QUICK` on a machine with a GPU.
 
 ---
 

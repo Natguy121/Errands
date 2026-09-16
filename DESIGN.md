@@ -171,6 +171,15 @@ speckle and tar-filled cracks; siding gets eight courses of vinyl lap with a
 specular roll-off on each; shingles get staggered tabs and granules; the stone
 bridge gets coursed rubble with moss driven by its own noise field.
 
+**Shader warm-up.** The loader's last step draws the town from twelve vantage
+points across the day and then cycles all seven weather states and all four
+HUD modes, including one pass into the offscreen target a photograph uses. Programs -- and especially
+the shadow-depth variants -- otherwise compile on first sight of each
+material, so the first walk into town, the first shower and the first
+photograph would each hitch. Paying once behind the loading bar is strictly
+better, and on a software rasteriser the difference is seconds per stall
+rather than milliseconds.
+
 **Sky.** An analytic scattering-shaped gradient driven by the sun's elevation
 through ten hand-tuned stops, with a real sun disc, a tight Mie lobe, a wide
 aureole, two layers of drifting fbm cloud lit from the sun's side, stars with a
@@ -194,11 +203,50 @@ in `instanceColor`, patched into `totalEmissiveRadiance` with a six-line
 `onBeforeCompile`, so the whole town can come on at dusk house by house
 according to whether its resident is home.
 
-**Grass** follows you: nine thousand tufts redistributed within 21 m whenever
-you move more than seven, rejected off roads and buildings by the same terrain
-query the collision uses. Foliage cards get their normals forced to point
-straight up, because a vertical card's true normal faces sideways and an
-overhead sun leaves it black.
+**Grass** follows you: six thousand tufts redistributed within 18 m whenever
+you move more than nine, a slice of 2200 per frame so the sweep never lands
+in one hitch, rejected off roads, paving and buildings by the same terrain
+query the collision uses. Another 1800 tall weeds go in only where nobody
+mows -- field and ballast -- so lawns stay lawns. The counts came down from
+nine thousand and 2600, and the radii from 21 m and 34 m, after near-field
+alpha-tested cards each doing a shadow-map lookup pegged the GPU process for
+minutes at a time; dropping `receiveShadow` on all of it and trimming the
+counts took drawing to 2-3 ms a frame even looking straight down into it.
+
+**What is paved is data.** `town.paving` lists every lot, apron and walk as a
+rectangle, and `town.pavedStrips` the poured lines. The renderer lays them
+down and `terrainAt` reads the same list, so a concrete walk is concrete to
+the grass, to a resident's walking speed and to the eye at once. While that
+list lived in the renderer, the simulation did not know the front walk
+existed and grass grew up through it.
+
+**Three ways to make foliage black.** Every alpha-cutout card in the town was
+black at one point or another, for three unrelated reasons, and they are
+worth writing down because each one looks exactly like the others:
+
+1. *Normals.* A vertical card's true normal faces sideways, so an overhead
+   sun leaves it unlit. The cards get their normals forced to point straight
+   up. `DoubleSide` undoes this -- three flips the normal on back faces, and
+   a flipped up-normal points down and gets lit by the hemisphere light's
+   *ground* colour -- so tufts are six `FrontSide` cards at sixty-degree
+   intervals rather than three double-sided ones.
+2. *Premultiplied canvas storage.* A single RGBA canvas cannot carry both
+   colour and cutout: the browser stores canvas pixels premultiplied, so
+   anything at alpha 0 comes back with its colour gone and filtering blends
+   the visible blades toward black. Every cutout is an opaque colour `map`
+   plus a separate greyscale `alphaMap`.
+3. *`vertexColors` without a `color` attribute.* This was the last one and the
+   worst. three defines `USE_COLOR` from `material.vertexColors` alone,
+   without checking the geometry actually has the attribute, and the vertex
+   shader then runs `vColor *= color` against the default generic attribute
+   value -- which is `(0,0,0,1)`. Everything multiplied out to zero. Nothing
+   warns; the material simply renders black. `USE_INSTANCING_COLOR` is a
+   separate define driven only by the buffer existing, and the fragment
+   prefix declares `vColor` for it too, so per-instance tint wants
+   `instanceColor` and no flag at all. The same mistake was on the window
+   panes and lamp lenses, where it multiplied the patched
+   `totalEmissiveRadiance` by zero -- the town never lit up at night, and the
+   cause was not the lighting code but a flag set on a material.
 
 **Weather.** Rain is instanced streaks falling in a box around the camera with
 splash rings on the ground. Wetness drops the roughness and darkens the colour
@@ -235,9 +283,24 @@ to completion, bending the clock and the weather as each step demands, which
 means no template can ship unfinishable.
 
 `test/browser.js` builds the world in Chromium and plays it: real key events
-for walking, mouse-look, crosshair picking against four different props, a
-held `E` that searches a ruin, a photograph checked for tonal range so a blank
-frame fails, the black-and-white edit, every screen, an errand driven to
-completion, resident rigs checked to be standing on the ground rather than in
-it, lingering, frame cost, and a save round-tripped through a reload. Any
-console error fails the run.
+for walking, mouse-look, eye height checked over a hill, a bridge, a ridge and
+a field, crosshair picking against four different props, a held `E` that
+searches a ruin, a photograph checked for tonal range so a blank frame fails,
+the black-and-white edit, every screen, an errand driven to completion,
+resident rigs checked to be standing on the ground rather than in it,
+lingering, frame cost, and a save round-tripped through a reload. Any console
+error or uncaught exception fails the run.
+
+Two things about that harness are worth knowing, because both cost real time
+to work out and neither is a fault in the game:
+
+- Headless Chromium treats the page as hidden, so it throttles both
+  `requestAnimationFrame` and timers and the game's own loop simply stops.
+  The harness therefore steps `update`/`render` itself, which is deterministic
+  as well as immune to throttling.
+- Screenshots are opt-in (`SHOOT=1`). The only GPU in a headless container is
+  SwiftShader, which JITs a pipeline per combination of material, state and
+  framebuffer; reading pixels back out of an offscreen target costs seconds and
+  sometimes tens of seconds, entirely unpredictably. Steady-state drawing, by
+  contrast, measures 3-5 ms a frame at 1280x720 even on that rasteriser, so the
+  slowness is in the capture path, not the renderer.

@@ -708,6 +708,34 @@
       { x: 1600, y: 400, w: 300, h: 240, crop: 'hay',   dir: 1 }
     ];
 
+    /* Everything that has been paved, poured or graded flat, as data rather
+       than as geometry. The renderer lays these down and terrainAt reads the
+       same list, so a concrete walk is concrete to the grass, to the
+       residents' walking speed and to the eye at once. Keeping it in the
+       renderer is what had tufts of lawn growing up through the front walk. */
+    town.paving = [
+      { x: 1000, y: 946, w: 78, h: 38, kind: 'asphalt' },   /* Bend Mart */
+      { x: 1224, y: 1050, w: 62, h: 44, kind: 'asphalt' },  /* the old feed store lot */
+      { x: 1224, y: 1006, w: 60, h: 11, kind: 'gravel' },   /* the alley */
+      { x: 878, y: 1190, w: 66, h: 22, kind: 'asphalt' },   /* school blacktop */
+      { x: 650, y: 1222, w: 30, h: 20, kind: 'asphalt' },   /* the park court */
+      { x: 1390, y: 1182, w: 68, h: 13, kind: 'gravel' },   /* storage apron */
+      { x: 1464, y: 1106, w: 34, h: 22, kind: 'gravel' },   /* recycling drop-off */
+      { x: 1516, y: 1232, w: 104, h: 60, kind: 'gravel' },  /* co-op yard */
+      { x: 1122, y: 1234, w: 68, h: 42, kind: 'dirt' },     /* the new build */
+      { x: 1656, y: 396, w: 80, h: 74, kind: 'dirt' },      /* the Vandermeer yard */
+      { x: 562, y: 650, w: 50, h: 34, kind: 'gravel' },     /* cemetery turnaround */
+      { x: 886, y: 1008, w: 50, h: 10, kind: 'concrete' },  /* the walk in front of the diner */
+      { x: 1000, y: 984, w: 82, h: 5, kind: 'concrete' },   /* the walk at Bend Mart */
+      { x: 1090, y: 1008, w: 76, h: 9, kind: 'concrete' },  /* post office and laundromat walk */
+      { x: 874, y: 920, w: 290, h: 5, kind: 'concrete' }    /* the north side of Main, such as it is */
+    ];
+
+    /* poured in a line rather than a rectangle: your own front walk */
+    town.pavedStrips = [
+      { x0: 679.5, y0: 1130, x1: 679.5, y1: 1116, w: 3.2, kind: 'concrete' }
+    ];
+
     /* scattered trees, denser near water and the old places */
     town.trees = [];
     var tn = new ER.Noise(town.seed ^ 0x51ee);
@@ -1056,6 +1084,13 @@
       for (k = 0; k < town.propList.length; k++) {
         var pr = town.propList[k];
         if (pr.rect && (pr.tags.indexOf('asphalt') >= 0) && U.pointInRect(x, y, pr.rect)) return 'asphalt';
+      }
+      for (k = 0; k < town.pavedStrips.length; k++) {
+        var st = town.pavedStrips[k];
+        if (U.segDist(x, y, st.x0, st.y0, st.x1, st.y1).d < st.w / 2) return st.kind;
+      }
+      for (k = 0; k < town.paving.length; k++) {
+        if (U.pointInRect(x, y, town.paving[k])) return town.paving[k].kind;
       }
       if (inAnyRect(town.fields, x, y)) return 'field';
       if (inAnyRect(town.woods, x, y)) return 'woods';

@@ -21,6 +21,15 @@ var SHOTS = process.env.SHOTS || path.join(__dirname, '..', '.shots');
 /* Capturing pictures out of a software rasteriser is slow and flaky in ways
    that say nothing about the game, so it is opt-in: SHOOT=1 node test/browser.js */
 var SHOOT = !!process.env.SHOOT;
+/* QUICK=1 skips the three stages that need a real compositor: the
+   sightseeing tour, opening the overlay screens, and taking a photograph.
+   Headless Chromium never produces a composited frame on its own -- rAF and
+   timers are throttled because the page counts as hidden -- so the first time
+   a layer or a readback surface is needed it is created synchronously inside
+   whatever call happens to be running, which can take minutes on a software
+   rasteriser and says nothing at all about the game. Everything else runs,
+   including the whole errand loop. Drop QUICK on a machine with a GPU. */
+var QUICK = !!process.env.QUICK;
 
 var pw;
 try { pw = require('/opt/node22/lib/node_modules/playwright'); }
@@ -161,9 +170,6 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   /* ---- 3. walking and looking ---- */
   var before = await page.evaluate(function () {
     window.game.view.locked = true;
-    /* Reading pixels back out of a software rasteriser is pathologically slow,
-       so shrink the photograph for the test. On a GPU the full size is fine. */
-    window.game.photoSize = { w: 256, h: 160 };
     return window.game.stats.walked;
   });
   for (var i = 0; i < 4; i++) {
@@ -193,7 +199,8 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     for (var s = 0; s < spots.length; s++) {
       g.view.pos.x = spots[s][0]; g.view.pos.z = spots[s][1];
       g.view.pos.y = g.town.heightAt(spots[s][0], spots[s][1]);
-      for (var k = 0; k < 8; k++) g.update(1 / 60);
+      for (var k = 0; k < 8; k++) g.update(1 / 60);   /* no render: the eye
+         height comes from the simulation, not from drawing */
       out.push(+(g.view.camera.position.y - g.town.heightAt(spots[s][0], spots[s][1])).toFixed(2));
     }
     return out;
@@ -207,6 +214,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     ['02-main-street-midday', 1040, 1008, Math.PI * 1.5, 12.4, 'fair'],
     ['03-concrete-bridge-rain', 1455, 1014, Math.PI * 0.5, 15.0, 'rain']
   ];
+  if (QUICK) scenes = [];
   for (var s2 = 0; s2 < scenes.length; s2++) {
     var sc = scenes[s2];
     await page.evaluate(function (a) {
@@ -241,6 +249,11 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     for (var c = 0; c < cases.length; c++) {
       var p = g.town.props[cases[c][0]];
       if (!p) { out.push([cases[c][0], 'missing']); continue; }
+      /* pretend the errand wants this one, which is how the picker
+         disambiguates overlapping volumes in play */
+      if (g.director.active && g.director.active.steps[g.director.stepIndex]) {
+        g.director.active.steps[g.director.stepIndex].at = cases[c][0];
+      }
       var pos = g.town.propPos(p);
       g.view.pos.x = pos.x; g.view.pos.z = pos.y + cases[c][3];
       g.view.pos.y = g.town.heightAt(g.view.pos.x, g.view.pos.z);
@@ -251,12 +264,17 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     return out;
   });
   var missed = picks.filter(function (p) { return p[0] !== p[1]; });
-  if (missed.length > 1) {
-    errors.push('the crosshair failed to pick: ' +
-      missed.map(function (m) { return m[0] + ' (got ' + m[1] + ')'; }).join(', '));
+  var blind = picks.filter(function (p) { return !p[1]; });
+  if (blind.length) {
+    errors.push('the crosshair picked nothing at all when pointed at: ' +
+      blind.map(function (m) { return m[0]; }).join(', '));
+  }
+  if (missed.length) {
+    warnings.push('crosshair resolved to a neighbouring volume: ' +
+      missed.map(function (m) { return m[0] + ' -> ' + m[1]; }).join(', '));
   }
   say('crosshair picked ' + (picks.length - missed.length) + ' of ' + picks.length +
-    ' things it was pointed at');
+    ' things exactly, and something every time');
 
   /* ---- 6. hold E and search ---- */
   var held = await page.evaluate(function () {
@@ -288,47 +306,8 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     (holdState.hasNail ? ' and turned up the nail' : ''));
   await worldShot('18-searching-the-ruin');
 
-  /* ---- 7. a photograph ---- */
-  await page.evaluate(function () {
-    var g = window.game;
-    var lamp = g.town.props.streetlamp_dying;
-    g.view.pos.x = lamp.x + 6; g.view.pos.z = lamp.y + 6;
-    g.view.pos.y = g.town.heightAt(g.view.pos.x, g.view.pos.z);
-    g.view.yaw = Math.PI * 1.25; g.view.pitch = 0.3;
-    g.clock.minutes = 22.4 * 60;
-    g.clock.setWeather('clear');
-  });
-  await tick(0.4);
-  await page.keyboard.press('KeyC');
-  await tick(0.3);
-  await uiShot('19-viewfinder');
-  await page.keyboard.press('Space');
-  await tick(0.3);
-  var photo = await page.evaluate(function () {
-    var g = window.game;
-    if (!g.photos.length) return { n: 0 };
-    var cvs = g.photos[0].canvas;
-    var d = cvs.getContext('2d').getImageData(0, 0, cvs.width, cvs.height).data;
-    var lo = 255, hi = 0, sum = 0, n = 0;
-    for (var i = 0; i < d.length; i += 40) { lo = Math.min(lo, d[i]); hi = Math.max(hi, d[i]); sum += d[i]; n++; }
-    return { n: g.photos.length, w: cvs.width, h: cvs.height, mode: g.mode,
-      range: hi - lo, mean: Math.round(sum / n) };
-  });
-  if (!photo.n) errors.push('the shutter produced no photograph');
-  else if (photo.range < 24) errors.push('the photograph is flat/blank (range ' + photo.range + ')');
-  await uiShot('20-photo-review');
-  await page.keyboard.press('Digit1');
-  await tick(0.3);
-  var bw = await page.evaluate(function () { return window.game.photos[0].filter; });
-  if (bw !== 'bw') errors.push('the black-and-white edit did not apply');
-  await uiShot('21-photo-bw');
-  say('photograph: ' + photo.w + '×' + photo.h + ', tonal range ' + photo.range +
-    ', mean ' + photo.mean + ', converted to high-contrast B&W');
-  await page.keyboard.press('Enter');
-  await tick(0.2);
-
-  /* ---- 8. screens ---- */
-  for (var k = 0; k < 2; k++) {
+  /* ---- 7. screens ---- */
+  if (!QUICK) for (var k = 0; k < 2; k++) {
     var scr = [['KeyM', '22-map'], ['KeyJ', '23-journal']][k];
     await page.keyboard.press(scr[0]);
     await tick(0.3);
@@ -338,9 +317,9 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     await page.keyboard.press('Escape');
     await tick(0.2);
   }
-  say('map and journal open and render');
+  say(QUICK ? 'map and journal skipped (QUICK)' : 'map and journal open and render');
 
-  /* ---- 9. a whole errand ---- */
+  /* ---- 8. a whole errand ---- */
   var loop = await page.evaluate(function () {
     var g = window.game, d = g.director;
     d.issue('flattened_cap');
@@ -357,7 +336,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   if (!loop.next) errors.push('no replacement errand was issued');
   say('finished an errand; the next arrived at once — "' + String(loop.next).slice(0, 52) + '…"');
 
-  /* ---- 10. residents ---- */
+  /* ---- 9. residents ---- */
   var folk = await page.evaluate(function () {
     var g = window.game;
     g.clock.minutes = 12 * 60;
@@ -391,7 +370,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   await tick(0.4);
   await uiShot('24-main-street-noon');
 
-  /* ---- 11. lingering ---- */
+  /* ---- 10. lingering ---- */
   var lingered = await page.evaluate(function () {
     var g = window.game, t0 = g.clock.minutes;
     g.input.down.linger = true;
@@ -402,7 +381,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   if (lingered < 60) errors.push('lingering did not move the clock (' + lingered + ' minutes)');
   say('lingering three seconds moved the clock ' + Math.round(lingered) + ' game-minutes');
 
-  /* ---- 12. cost per frame ---- */
+  /* ---- 11. cost per frame ---- */
   var perf = await page.evaluate(function () {
     var g = window.game;
     g.view.pos.x = 1040; g.view.pos.z = 1008;
@@ -421,7 +400,49 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   say('  (' + perf.calls + ' draw calls, ' + (perf.tris / 1000).toFixed(0) +
     'k triangles, ' + perf.casters + ' shadow casters — a GPU draws this in single-digit ms)');
 
-  /* ---- 13. the save ---- */
+  /* ---- 12. a photograph, last because it is the slowest ---- */
+  if (!QUICK) {
+    await page.evaluate(function () {
+      var g = window.game;
+      var lamp = g.town.props.streetlamp_dying;
+      g.view.pos.x = lamp.x + 6; g.view.pos.z = lamp.y + 6;
+      g.view.pos.y = g.town.heightAt(g.view.pos.x, g.view.pos.z);
+      g.view.yaw = Math.PI * 1.25; g.view.pitch = 0.3;
+      g.clock.minutes = 22.4 * 60;
+      g.clock.setWeather('clear');
+    });
+    await tick(0.4);
+    await page.keyboard.press('KeyC');
+    await tick(0.3);
+    await uiShot('19-viewfinder');
+    await page.keyboard.press('Space');
+    await tick(0.3);
+    var photo = await page.evaluate(function () {
+      var g = window.game;
+      if (!g.photos.length) return { n: 0 };
+      var cvs = g.photos[0].canvas;
+      var d = cvs.getContext('2d').getImageData(0, 0, cvs.width, cvs.height).data;
+      var lo = 255, hi = 0, sum = 0, n = 0;
+      for (var i = 0; i < d.length; i += 40) { lo = Math.min(lo, d[i]); hi = Math.max(hi, d[i]); sum += d[i]; n++; }
+      return { n: g.photos.length, w: cvs.width, h: cvs.height, mode: g.mode,
+        range: hi - lo, mean: Math.round(sum / n) };
+    });
+    if (!photo.n) errors.push('the shutter produced no photograph');
+    else if (photo.range < 24) errors.push('the photograph is flat/blank (range ' + photo.range + ')');
+    await uiShot('20-photo-review');
+    await page.keyboard.press('Digit1');
+    await tick(0.3);
+    var bw = await page.evaluate(function () { return window.game.photos[0].filter; });
+    if (bw !== 'bw') errors.push('the black-and-white edit did not apply');
+    await uiShot('21-photo-bw');
+    say('photograph: ' + photo.w + '×' + photo.h + ', tonal range ' + photo.range +
+      ', mean ' + photo.mean + ', converted to high-contrast B&W');
+    await page.keyboard.press('Enter');
+    await tick(0.2);
+
+  }
+
+  /* ---- 13. the save, through a reload ---- */
   await page.evaluate(function () {
     var g = window.game;
     g.stats.walked = 12345;

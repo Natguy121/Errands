@@ -191,7 +191,9 @@
     /* the lights the sky implies */
     this.sun = new T.DirectionalLight(0xfff0d6, 3.0);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    /* 1024 across a 92 m shadow camera is about eleven texels per metre,
+       which is plenty for a town, at a quarter of the rasterisation */
+    this.sun.shadow.mapSize.set(1024, 1024);
     this.sun.shadow.camera.near = 0.5;
     this.sun.shadow.camera.far = 210;
     this.sun.shadow.bias = -0.0006;

@@ -9,7 +9,7 @@
     color-scheme: dark;
     --ink: #edeade; --dim: #a9a79d; --faint: #75746c;
     --amber: #e3c377; --green: #a4c78c; --warn: #e0a074;
-    --panel: rgba(14,16,14,.74); --edge: rgba(236,232,218,.12);
+    --panel: rgba(13,15,13,.86); --edge: rgba(236,232,218,.12);
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
@@ -24,7 +24,6 @@
   .hud .hidden { display: none !important; }
   .panel {
     background: var(--panel); border: 1px solid var(--edge); border-radius: 8px;
-    backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
   }
 
   /* crosshair */
@@ -53,7 +52,6 @@
     display: none; align-items: center; gap: 9px; white-space: nowrap;
     background: var(--panel); border: 1px solid var(--edge); border-radius: 19px;
     padding: 7px 15px 7px 8px; font-size: 13px; font-weight: 600;
-    backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
   }
   .prompt.on { display: flex; }
   .prompt.blocked { color: var(--warn); }
@@ -108,7 +106,6 @@
   .inventory .chip {
     display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--dim);
     background: var(--panel); border: 1px solid var(--edge); border-radius: 15px; padding: 5px 11px 5px 9px;
-    backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
   }
   .inventory .chip b { color: var(--ink); font: 600 10.5px var(--mono); }
   .inventory .chip::before {
@@ -134,9 +131,8 @@
     display: flex; flex-direction: column-reverse; align-items: center; gap: 6px;
   }
   .toast {
-    background: var(--panel); border: 1px solid var(--edge); border-radius: 14px;
+    background: rgba(13,15,13,.88); border: 1px solid var(--edge); border-radius: 14px;
     padding: 6px 15px; font-size: 13px; color: var(--dim); max-width: 60vw; text-align: center;
-    backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
     animation: rise .22s ease both;
   }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
@@ -156,9 +152,8 @@
   .bubbles { position: absolute; inset: 0; }
   .bubble {
     position: absolute; max-width: 250px; padding: 7px 11px;
-    background: rgba(14,16,14,.86); border: 1px solid var(--edge); border-radius: 9px;
+    background: rgba(13,15,13,.92); border: 1px solid var(--edge); border-radius: 9px;
     font-size: 12.5px; color: var(--ink); line-height: 1.35;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
   .bubble b { display: block; font: 600 9.5px var(--mono); letter-spacing: .1em; color: var(--amber); margin-bottom: 2px; }
 
@@ -174,8 +169,7 @@
 
   /* ---------------- overlays ---------------- */
   .overlay {
-    position: absolute; inset: 0; background: rgba(7,9,8,.93); display: none;
-    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    position: absolute; inset: 0; background: rgba(7,9,8,.975); display: none;
     pointer-events: auto; overflow: hidden;
   }
   .overlay.on { display: block; }
@@ -408,7 +402,9 @@
     game.view.onLockChange = function (locked) {
       document.body.classList.toggle('unlocked', !locked);
     };
-    cv.requestPointerLock();
+    /* Pointer lock has to come from a gesture, so the canvas asks for it on
+       click (see View.bindPointer). Asking here would only throw. */
+    game.hud.toast('Click to look around.', 'plain');
 
     last = performance.now();
     if (raf) cancelAnimationFrame(raf);

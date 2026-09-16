@@ -339,11 +339,22 @@
 
   /* ---------------- what the crosshair is on ---------------- */
 
-  View.prototype.pick = function (targets, range) {
+  /* Interactables often sit inside one another -- the stone bridge has its
+     moss, its arch stone and its middle all within a few metres -- so when the
+     errand wants one of them in particular, that one wins over whichever
+     volume happens to be nearest. */
+  View.prototype.pick = function (targets, range, preferId) {
     this.raycaster.far = range || 5.2;
     this.raycaster.setFromCamera(this.centre, this.camera);
     var hits = this.raycaster.intersectObjects(targets, false);
     if (!hits.length) return null;
+    if (preferId) {
+      for (var i = 0; i < hits.length; i++) {
+        if (hits[i].object.userData.propId === preferId) {
+          return { propId: preferId, dist: hits[i].distance, point: hits[i].point };
+        }
+      }
+    }
     return { propId: hits[0].object.userData.propId, dist: hits[0].distance, point: hits[0].point };
   };
 

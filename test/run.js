@@ -10,7 +10,18 @@ var path = require('path');
 var SRC = path.join(__dirname, '..', 'src');
 
 global.window = undefined;
-['core/rng', 'core/util', 'world/names', 'world/time', 'world/town',
+/* a localStorage good enough for the save module */
+global.localStorage = (function () {
+  var store = {};
+  return {
+    getItem: function (k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
+    setItem: function (k, v) { store[k] = String(v); },
+    removeItem: function (k) { delete store[k]; },
+    _size: function () { return Object.keys(store).length; }
+  };
+})();
+
+['core/rng', 'core/util', 'core/save', 'world/names', 'world/time', 'world/town',
   'quest/items', 'quest/pool', 'quest/pool2', 'quest/director',
   'world/residents'].forEach(function (f) {
   try { require(path.join(SRC, f + '.js')); } catch (e) {
@@ -82,6 +93,29 @@ ok(town.w * town.h === 4000000, 'the town should be four square kilometres');
   });
   ok(bad.length === 0, 'props with nowhere to stand: ' + bad.join(', '));
 })();
+
+/* Paved ground has to read as paved. The renderer and terrainAt work off the
+   same town.paving, and when they did not, grass grew through the front walk. */
+(function () {
+  var PAVED = { asphalt: 1, concrete: 1, gravel: 1, dirt: 1 };
+  ok(town.paving.length > 10, 'the town should have paving in it');
+  var soft = [];
+  for (var i = 0; i < town.paving.length; i++) {
+    var p = town.paving[i];
+    /* the middle of a pad, where no road or driveway can be claiming it */
+    var t = town.terrainAt(p.x + p.w / 2, p.y + p.h / 2);
+    if (!PAVED[t]) soft.push(p.kind + ' pad at ' + p.x + ',' + p.y + ' reads as ' + t);
+  }
+  ok(soft.length === 0, 'paving that is not paved underfoot: ' + soft.join('; '));
+  for (var k = 0; k < town.pavedStrips.length; k++) {
+    var st = town.pavedStrips[k];
+    var mx = (st.x0 + st.x1) / 2, my = (st.y0 + st.y1) / 2;
+    ok(!!PAVED[town.terrainAt(mx, my)],
+      'the ' + st.kind + ' strip at ' + mx + ',' + my + ' reads as ' + town.terrainAt(mx, my));
+    /* and it must be walkable at full speed, not waded through like a lawn */
+    ok(town.speedAt(mx, my) === 1, 'the ' + st.kind + ' strip slows you down like grass');
+  }
+}());
 
 /* ---------------- 2. static validation of the pool ---------------- */
 var POOL = ER.questPool();
@@ -297,6 +331,113 @@ if (ER.populate) {
   });
 }
 
+/* ---------------- 6. the clock ---------------- */
+(function () {
+  var c = new ER.Clock('clocktest');
+  var day0 = c.day;
+  /* twenty-four real minutes should be exactly one day */
+  for (var i = 0; i < 24 * 60 * 20; i++) c.advance(1 / 20);
+  ok(c.day === day0 + 1, 'a day should take 24 real minutes; it took ' +
+    (c.day - day0) + ' day(s) worth');
+
+  /* lingering runs an hour a second */
+  var c2 = new ER.Clock('lingertest');
+  var m0 = c2.minutes;
+  for (var j = 0; j < 5 * 60; j++) c2.advance(1 / 60, 60);
+  var hours = (c2.minutes - m0) / 60;
+  ok(Math.abs(hours - 5) < 0.01, 'lingering five seconds should pass five hours, passed ' + hours.toFixed(2));
+
+  /* the ground soaks and dries on believable timescales */
+  var c3 = new ER.Clock('wettest');
+  c3.setWeather('rain');
+  var soak = 0;
+  while (c3.wet < 0.9 && soak < 600) { c3.advance(0.1); soak += 0.1; }
+  ok(soak > 5 && soak < 60, 'the ground should soak in well under a minute of rain, took ' + soak.toFixed(0) + ' s');
+  c3.setWeather('clear');
+  var dry = 0;
+  while (c3.wet > 0.2 && dry < 3000) { c3.advance(0.1); dry += 0.1; }
+  ok(dry > soak * 2, 'wet ground should outlast the shower; soaked in ' + soak.toFixed(0) +
+    ' s and dried in ' + dry.toFixed(0) + ' s');
+
+  /* dusk has to actually happen, and last long enough to do something in */
+  var c4 = new ER.Clock('dusktest');
+  var duskMinutes = 0, sawDusk = false, sawNight = false, sawNoon = false;
+  for (var h = 0; h < 1440; h++) {
+    c4.minutes = h;
+    var ph = c4.phase();
+    if (ph === 'dusk') { duskMinutes++; sawDusk = true; }
+    if (ph === 'night') sawNight = true;
+    if (ph === 'midday') sawNoon = true;
+  }
+  ok(sawDusk && sawNight && sawNoon, 'a day should contain midday, dusk and night');
+  ok(duskMinutes > 40, 'dusk should last long enough to trace a gravestone in; it lasts ' +
+    duskMinutes + ' minutes');
+  /* and the errands that want dusk must agree with the clock about when it is */
+  var duskWindow = { h0: 18.4, h1: 20.1 };
+  var overlap = 0;
+  for (var q = 0; q < 1440; q++) {
+    c4.minutes = q;
+    if (c4.phase() === 'dusk' && c4.inWindow(duskWindow.h0, duskWindow.h1)) overlap++;
+  }
+  ok(overlap > 30, "the errands' idea of dusk should overlap the clock's; overlap is " +
+    overlap + ' minutes');
+})();
+
+/* ---------------- 7. saving ---------------- */
+(function () {
+  if (!ER.Save) { ok(false, 'the save module did not load'); return; }
+  var g = mockGame(town);
+  var d = new ER.Director(g);
+  g.director = d;
+  g.view = { pos: { x: 1234.5, y: 0, z: 678.25 }, yaw: 1.25, pitch: -0.2 };
+  g.people = ER.populate ? ER.populate(town, new ER.RNG('savepeople')) : [];
+  g.discovered = { bendmart_counter: 1, cemetery_gate: 1 };
+  g.milestones = { m10: 1 };
+  g.town = town;
+  g.clock.minutes = 17 * 60 + 42;
+  g.clock.day = 9;
+  d.issue('moss_with_spoon');
+  d.perform(town.props.bendmart_counter);            /* this buys the spoon */
+  g.stats.walked = 4321.5;
+  if (g.people.length) { g.people[0].met = true; g.people[0].seen = 5; g.people[0].witnessed = 2; }
+
+  ok(ER.Save.write(g), 'the save did not write');
+  ok(ER.Save.exists(), 'the save should exist after writing');
+  var raw = ER.Save.read();
+  ok(!!raw, 'the save did not read back');
+  if (!raw) return;
+  ok(raw.seed === town.seedStr, 'the save lost the seed');
+  ok(Math.round(raw.player.x) === 1235 && Math.round(raw.player.y) === 678,
+    'the save lost where you were standing');
+  ok(raw.player.yaw === 1.25, 'the save lost which way you were facing');
+  ok(raw.clock.day === 9, 'the save lost the day');
+  ok(raw.stats.walked === 4321.5, 'the save lost the distance walked');
+  ok(raw.inv.spoon >= 1, 'the save lost what was in your pockets');
+  ok(raw.discovered.cemetery_gate === 1, 'the save lost the places you had found');
+  ok(raw.milestones.m10 === 1, 'the save lost the milestones');
+  ok(!!raw.director.active && raw.director.active.tplId === 'moss_with_spoon',
+    'the save lost the errand you were on');
+  ok(raw.director.stepIndex === d.stepIndex, 'the save lost how far into it you were');
+  if (raw.people && raw.people.length) {
+    ok(raw.people[0].met === true && raw.people[0].seen === 5,
+      'the save lost who you had met');
+  }
+
+  /* and it has to come back as the same errand, mid-step */
+  var g2 = mockGame(town);
+  var d2 = new ER.Director(g2);
+  d2.load(raw.director);
+  ok(!!d2.active, 'the errand did not survive the reload');
+  if (d2.active) {
+    ok(d2.active.tplId === 'moss_with_spoon', 'a different errand came back');
+    ok(d2.active.title === d.active.title, 'the errand came back with a different title');
+    ok(d2.stepIndex === d.stepIndex, 'the errand came back at a different step');
+    ok(d2.active.steps.length === d.active.steps.length, 'the errand came back with different steps');
+  }
+  ok(ER.Save.clear(), 'the save did not clear');
+  ok(!ER.Save.exists(), 'the save should be gone after clearing');
+})();
+
 /* ---------------- report ---------------- */
 console.log('');
 if (fails.length === 0) {
@@ -304,6 +445,7 @@ if (fails.length === 0) {
   console.log('  ' + POOL.length + ' errand templates, all solvable.');
   console.log('  ' + town.propList.length + ' interactable things in ' +
     (town.w / 1000 * town.h / 1000) + ' km².');
+  console.log('  town, errands, residents, clock and saves all check out.');
   console.log('');
   process.exit(0);
 } else {

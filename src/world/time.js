@@ -42,7 +42,9 @@
     this.date = startDay || 15;
     this.dowIndex = 2;                     // a Tuesday
     this.year = 2026;
-    this.scale = 60;                       // game minutes per real second
+    /* One real second is one town minute, so a day takes twenty-four real
+       minutes. Lingering multiplies this. */
+    this.scale = 1;                        // game minutes per real second
     this.weather = 'fair';
     this.weatherFor = 90;                  // game minutes until next roll
     this.wet = 0;                          // 0..1, ground wetness, lags rain
@@ -78,12 +80,14 @@
 
     /* ground takes a while to dry out; puddles outlast the rain */
     var target = WEATHER[this.weather].wet;
-    var rate = target > this.wet ? 0.012 : 0.0022;
+    /* the ground soaks in about twenty minutes and takes a couple of hours to
+       give it back, which is roughly how asphalt behaves */
+    var rate = target > this.wet ? 0.05 : 0.008;
     this.wet += U.clamp(target - this.wet, -rate * dm, rate * dm);
     this.wet = U.clamp(this.wet, 0, 1);
 
     var ftarget = WEATHER[this.weather].fog;
-    this.fogAmt += U.clamp(ftarget - this.fogAmt, -0.01 * dm, 0.01 * dm);
+    this.fogAmt += U.clamp(ftarget - this.fogAmt, -0.03 * dm, 0.03 * dm);
     this.fogAmt = U.clamp(this.fogAmt, 0, 1);
   };
 
