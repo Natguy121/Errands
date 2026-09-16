@@ -283,7 +283,7 @@
     inst.frustumCulled = false;
     whiteInstanceColours(inst);
     this.root.add(inst);
-    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 18 };
+    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 13 };
 
     /* the taller stuff that grows where nobody mows */
     var wt = this.grassTexture(true);
@@ -299,7 +299,7 @@
     weeds.frustumCulled = false;
     whiteInstanceColours(weeds);
     this.root.add(weeds);
-    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 26 };
+    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 18 };
   };
 
   /* Redistribute the tufts when you have walked far enough to notice, a slice
@@ -331,6 +331,15 @@
         var a = rng.float(0, 6.2832);
         var r = Math.sqrt(rng.next()) * set.radius;
         var x = camX + Math.cos(a) * r, z = camZ + Math.sin(a) * r;
+        /* Area-uniform placement is right for grass -- constant density per
+           square metre -- but it puts most of the tufts in the outer ring,
+           which is exactly the distance at which a card is a one-pixel sliver
+           rather than a clump. Thousands of slivers is the streaking. Shrink
+           them away over the last half of the radius instead of stopping at a
+           hard edge: the near field keeps its clumps, the far ring stops
+           drawing, and there is no line where the grass ends. The terrain is
+           grass-coloured underneath, so nothing looks bald. */
+        var fade = 1 - U.smooth(U.clamp((r / set.radius - 0.5) / 0.5, 0, 1));
         var terr = town.terrainAt(x, z);
         /* nobody mows the ditches, the verges or the grade; everybody mows
            their yard, so the tall stuff stays out of them */
@@ -349,8 +358,14 @@
            squashes every blade into a fat diagonal smear, and a lawn made of
            those reads as brushed fabric rather than grass. Weeds are the other
            way about: taller than they are wide. */
-        var sc = tall ? rng.float(0.42, 0.80) : rng.float(0.16, 0.27);
+        var sc = (tall ? rng.float(0.42, 0.80) : rng.float(0.16, 0.27)) * fade;
         var wide = sc * (tall ? rng.float(0.45, 0.70) : rng.float(0.85, 1.20));
+        if (sc < 0.02) {
+          m.makeScale(0, 0, 0);
+          m.setPosition(0, -50, 0);
+          set.mesh.setMatrixAt(i, m);
+          continue;
+        }
         e.set(0, rng.float(0, 6.2832), 0);
         q.setFromEuler(e);
         m.compose(new T.Vector3(x, h(x, z) - 0.03, z), q, new T.Vector3(wide, sc, wide));

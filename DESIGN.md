@@ -218,15 +218,23 @@ in `instanceColor`, patched into `totalEmissiveRadiance` with a six-line
 `onBeforeCompile`, so the whole town can come on at dusk house by house
 according to whether its resident is home.
 
-**Grass** follows you: six thousand tufts redistributed within 18 m whenever
-you move more than nine, a slice of 2200 per frame so the sweep never lands
-in one hitch, rejected off roads, paving and buildings by the same terrain
-query the collision uses. Another 1800 tall weeds go in only where nobody
-mows -- field and ballast -- so lawns stay lawns. The counts came down from
-nine thousand and 2600, and the radii from 21 m and 34 m, after near-field
+**Grass** follows you: six thousand tufts redistributed within 13 m whenever
+you move more than nine, shrinking away over the outer half of that radius
+rather than stopping at a line. A slice of 2200 goes down per frame so the
+sweep never lands in one hitch, and they are rejected off roads, shoulders,
+paving and buildings by the same terrain query the collision uses. Another
+1800 tall weeds go in only where nobody mows -- field and ballast -- so lawns
+stay lawns.
+
+The counts came down from nine thousand and 2600 after near-field
 alpha-tested cards each doing a shadow-map lookup pegged the GPU process for
 minutes at a time; dropping `receiveShadow` on all of it and trimming the
-counts took drawing to 2-3 ms a frame even looking straight down into it.
+counts took drawing to 2-3 ms a frame even looking straight down into it. The
+radii came in twice, and the second time for a different reason: area-uniform
+placement is correct for grass, since it gives constant density per square
+metre, but it puts most of the tufts in the outer ring, which is exactly the
+distance at which a card stops being a clump and becomes a one-pixel sliver.
+Thousands of slivers is what the streaking was.
 
 **What is paved is data.** `town.paving` lists every lot, apron and walk as a
 rectangle, and `town.pavedStrips` the poured lines. The renderer lays them
