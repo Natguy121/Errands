@@ -34,7 +34,7 @@
   var DUSK = { h0: 18.4, h1: 20.1, label: 'at dusk' };
   var NIGHT = { h0: 21.5, h1: 4.5, label: 'after dark' };
   var PREDAWN = { h0: 4.6, h1: 6.6, label: 'before sunrise' };
-  var NOON = { h0: 11.8, h1: 12.4, label: 'at noon' };
+  var NOON = { h0: 11.8, h1: 13.5, label: 'in the middle of the day' };
   var WET = ['rain', 'drizzle', 'storm'];
 
   function anyGrave(rng, town) {

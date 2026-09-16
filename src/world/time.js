@@ -140,11 +140,20 @@
     return l * (1 - WEATHER[this.weather].dim * 0.8);
   };
 
-  /* direction the sun throws shadows, radians. north is -y. */
+  /* Direction shadows are thrown, in radians; north is -y, east is +x.
+     At solar noon the sun is due south, so shadows point north. */
   Clock.prototype.sunAngle = function () {
     var h = this.hourFloat(), sr = this.sunrise(), ss = this.sunset();
     var t = U.clamp((h - sr) / Math.max(0.001, ss - sr), 0, 1);
-    return Math.PI * 0.5 + (t - 0.5) * Math.PI * 1.15;
+    return -Math.PI * 0.5 + (t - 0.5) * Math.PI * 1.15;
+  };
+
+  /* how far off true north the shadow currently falls, radians, signed */
+  Clock.prototype.shadowBearing = function () {
+    var a = this.sunAngle() + Math.PI / 2;
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
   };
 
   /* true if hour-float is inside a wrapping window */

@@ -17,7 +17,7 @@
 
   var DUSK = { h0: 18.4, h1: 20.1, label: 'at dusk' };
   var PREDAWN = { h0: 4.6, h1: 6.7, label: 'before sunrise' };
-  var NOON = { h0: 11.8, h1: 12.4, label: 'at noon' };
+  var NOON = { h0: 11.8, h1: 13.5, label: 'in the middle of the day' };
   var WET = ['rain', 'drizzle', 'storm'];
 
   function anyDitch(rng) { return rng.pick(['ditch_cr9', 'ditch_cr9_east']); }

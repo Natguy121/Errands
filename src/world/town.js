@@ -405,6 +405,8 @@
     /* ---- diner ---- */
     p({ id: 'diner_door', name: "the door of Halter's Diner", x: 910, y: 1017, r: 3.0,
       where: 'Main Street, south side', verbs: ['ENTER'], tags: ['door', 'diner'], landmark: true });
+    p({ id: 'diner_counter', name: 'the counter at the diner', x: 916, y: 1016.6, r: 3.0,
+      where: 'inside the diner', verbs: ['SIT'], tags: ['indoor', 'diner'] });
     p({ id: 'diner_step', name: "the diner's front step", x: 910, y: 1014, r: 2.4,
       where: 'Main Street, south side', verbs: ['MEASURE'], tags: ['step', 'concrete'] });
     p({ id: 'diner_sign', name: "the diner's OPEN sign", x: 903, y: 1018.5, r: 3.2,
@@ -1070,6 +1072,104 @@
       if (t === 'grass') return 0.93;
       return 1;
     };
+
+    /* ---- topography. flat where the graders went, not flat elsewhere. ----
+       Sampled once into a coarse grid and interpolated after that, so the
+       renderer can ask for thousands of heights a frame without noticing. */
+    (function () {
+      var hn = new ER.Noise(seed ^ 0x7e11a1);
+
+      /* a spatial index of every road segment, so "how far is the road" is
+         a handful of tests instead of a hundred and sixty */
+      var BUCKET = 70;
+      var bw = Math.ceil(W / BUCKET), bh = Math.ceil(H / BUCKET);
+      var buckets = new Array(bw * bh);
+      function addSeg(list, ax, ay, bx, by, edge) {
+        var x0 = Math.max(0, Math.floor((Math.min(ax, bx) - edge - 30) / BUCKET));
+        var x1 = Math.min(bw - 1, Math.floor((Math.max(ax, bx) + edge + 30) / BUCKET));
+        var y0 = Math.max(0, Math.floor((Math.min(ay, by) - edge - 30) / BUCKET));
+        var y1 = Math.min(bh - 1, Math.floor((Math.max(ay, by) + edge + 30) / BUCKET));
+        for (var gy = y0; gy <= y1; gy++) for (var gx = x0; gx <= x1; gx++) {
+          var k = gy * bw + gx;
+          if (!buckets[k]) buckets[k] = [];
+          buckets[k].push([ax, ay, bx, by, edge]);
+        }
+      }
+      for (var ri = 0; ri < town.roads.length; ri++) {
+        var rd = town.roads[ri], edge = rd.width / 2 + rd.shoulder;
+        for (var si = 0; si < rd.pts.length - 1; si++)
+          addSeg(buckets, rd.pts[si][0], rd.pts[si][1], rd.pts[si + 1][0], rd.pts[si + 1][1], edge);
+      }
+
+      function nearestRoad(x, y) {
+        var gx = U.clamp(Math.floor(x / BUCKET), 0, bw - 1);
+        var gy = U.clamp(Math.floor(y / BUCKET), 0, bh - 1);
+        var list = buckets[gy * bw + gx];
+        if (!list) return null;
+        var best = null, bd = Infinity;
+        for (var i = 0; i < list.length; i++) {
+          var sg = list[i];
+          var r = U.segDist(x, y, sg[0], sg[1], sg[2], sg[3]);
+          var beyond = r.d - sg[4];
+          if (beyond < bd) { bd = beyond; best = { x: r.x, y: r.y, beyond: beyond }; }
+        }
+        return best;
+      }
+
+      /* the land itself, before anybody graded anything */
+      function raw(x, y) {
+        var h = (hn.fbm(x / 760, y / 760, 3) - 0.5) * 7.4     /* the shape of the section */
+              + (hn.fbm(x / 230, y / 230, 3) - 0.5) * 2.6     /* rolls */
+              + (hn.fbm(x / 64, y / 64, 2) - 0.5) * 0.55;     /* lumps */
+        /* the cemetery is on the rise, which is why it is there */
+        var dc2 = (x - 575) * (x - 575) + (y - 652) * (y - 652);
+        h += 7.0 * Math.exp(-dc2 / 18225);
+        /* the ridge the cell tower and the repeater shed stand on */
+        var dr2 = (x - 1616) * (x - 1616) + (y - 618) * (y - 618);
+        h += 9.5 * Math.exp(-dr2 / 32400);
+        /* and Little Fox Creek has cut itself down through all of it */
+        var cn = polyNearest(town.creek.pts, x, y);
+        h -= 3.4 * Math.exp(-(cn.d * cn.d) / 5476);
+        return h;
+      }
+
+      /* graded flat out to 26 m either side of every road */
+      function graded(x, y) {
+        var h = raw(x, y);
+        var nr = nearestRoad(x, y);
+        if (nr && nr.beyond < 26) {
+          var onRoad = raw(nr.x, nr.y);
+          h = U.lerp(onRoad, h, U.smooth(U.clamp(nr.beyond / 26, 0, 1)));
+        }
+        return h;
+      }
+
+      /* bake it: 5 m grid, bilinear after that */
+      var STEP = 5;
+      var gw = Math.floor(W / STEP) + 2, gh2 = Math.floor(H / STEP) + 2;
+      var grid = new Float32Array(gw * gh2);
+      for (var yy = 0; yy < gh2; yy++)
+        for (var xx = 0; xx < gw; xx++)
+          grid[yy * gw + xx] = graded(xx * STEP, yy * STEP);
+
+      town.heightAt = function (x, y) {
+        var fx = U.clamp(x / STEP, 0, gw - 1.001), fy = U.clamp(y / STEP, 0, gh2 - 1.001);
+        var ix = fx | 0, iy = fy | 0;
+        var tx = fx - ix, ty = fy - iy;
+        var i00 = iy * gw + ix;
+        var a = grid[i00], b = grid[i00 + 1], c = grid[i00 + gw], d = grid[i00 + gw + 1];
+        return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+      };
+
+      /* the surface normal, for laying things down so they sit on the ground */
+      town.slopeAt = function (x, y) {
+        var e = 2.0;
+        return { dx: (town.heightAt(x + e, y) - town.heightAt(x - e, y)) / (2 * e),
+          dy: (town.heightAt(x, y + e) - town.heightAt(x, y - e)) / (2 * e) };
+      };
+
+      town.heightGrid = { data: grid, step: STEP, w: gw, h: gh2 };
+    })();
 
     buildCemetery(town, rng.sub('graves'));
     buildProps(town, rng.sub('props'));
