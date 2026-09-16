@@ -157,12 +157,15 @@ Checks town invariants, that the resident walk graph is fully connected, that
 every interactable has somewhere to stand, that every errand template refers
 only to props, items and verbs that exist — and then drives all sixty
 templates to completion with a solver, so nothing in the pool can be
-unfinishable. It checks that paved ground reads as paved underfoot, so grass
-cannot grow through the front walk. It checks the clock and the sun -- a day
-really is twenty-four real minutes, the sun really is on the horizon at
-sunrise and sunset and never jumps more than a fraction of a degree in a
-minute, and dusk really does last long enough to trace a gravestone in. And
-it round-trips a save, errand and step position included.
+unfinishable.
+
+It checks that paved ground reads as paved underfoot, so grass cannot grow
+through the front walk, and that you can reach a prop from anywhere inside
+it, by calling the real picking code on a stub. It checks the clock and the
+sun: a day really is twenty-four real minutes, the sun really is on the
+horizon at sunrise and sunset and never jumps more than a fraction of a
+degree in a minute, and dusk really does last long enough to trace a
+gravestone in. And it round-trips a save, errand and step position included.
 
 ```sh
 npx http-server -p 8099 -s . &

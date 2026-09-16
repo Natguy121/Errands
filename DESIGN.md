@@ -236,6 +236,21 @@ metre, but it puts most of the tufts in the outer ring, which is exactly the
 distance at which a card stops being a clump and becomes a one-pixel sliver.
 Thousands of slivers is what the streaking was.
 
+**Reaching what you are standing on.** The crosshair picks props out of
+invisible hit volumes -- a box for a rect, otherwise a sphere of
+`clamp(r, 0.6, 3.2)`. Those volumes are `DoubleSide` so that standing inside
+a search zone still registers, and that much works: from inside, the ray hits
+the far wall on its way out. What does not work is the range check. For a
+3.2 m sphere entered near one edge the exit lands 5.6 m away, past the 5.4 m
+the crosshair reaches, so the only intersection gets culled -- and the prop
+becomes unpickable exactly when you are closest to it. The fallback that was
+meant to cover this capped at a flat 2.2 m, which is tighter than some props'
+own radius, so it could not. A prop's reach is now
+`max(2.2, min(r, 3.2))`: the extent of its own hit volume, with the old
+2.2 m kept as a floor so small things keep their grace. The moss on the old
+stone bridge -- one of the errands from the original brief -- could not be
+scraped while standing on the bridge until this was fixed.
+
 **What is paved is data.** `town.paving` lists every lot, apron and walk as a
 rectangle, and `town.pavedStrips` the poured lines. The renderer lays them
 down and `terrainAt` reads the same list, so a concrete walk is concrete to

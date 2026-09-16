@@ -274,7 +274,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
       missed.map(function (m) { return m[0] + ' -> ' + m[1]; }).join(', '));
   }
   say('crosshair picked ' + (picks.length - missed.length) + ' of ' + picks.length +
-    ' things exactly, and something every time');
+    ' things exactly, and ' + (blind.length ? blind.length + ' not at all' : 'something every time'));
 
   /* ---- 6. hold E and search ---- */
   var held = await page.evaluate(function () {

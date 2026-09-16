@@ -6,7 +6,7 @@
 (function (ER) {
   'use strict';
   var U = ER.U;
-  var T = window.THREE;
+  var T = typeof window !== 'undefined' ? window.THREE : null;
 
   /* Standing still runs the clock an hour a second, so waiting for dusk or
      for the noon siren costs seconds rather than minutes. */
@@ -439,12 +439,24 @@
       var p = this.town.props[hit.propId];
       if (p) return p;
     }
-    /* last resort: something you are practically standing on */
+    /* Last resort: something you are practically standing on.
+
+       The reach here has to be the prop's own, not a flat 2.2 m. A hit volume
+       is a sphere of clamp(p.r, 0.6, 3.2) (see buildHitVolumes), so that is
+       how far a prop actually extends, and a cap tighter than it made the
+       widest props unpickable exactly when you stood closest to them. The
+       crosshair cannot rescue you there either: from inside a hit volume the
+       only intersection is the far wall, and for a 3.2 m sphere entered near
+       one edge that lands at 5.6 m -- past the 5.4 m the crosshair reaches.
+       That is what put the moss on the old stone bridge out of reach while
+       standing on it. Keep the old 2.2 m as a floor so small props still have
+       their grace. */
     var near = this.town.propAt(this.player.x, this.player.y, wanted);
     if (near && near.rect) return near;
     if (near) {
       var pos = this.town.propPos(near);
-      if (U.dist(this.player.x, this.player.y, pos.x, pos.y) < 2.2) return near;
+      var reach = Math.max(2.2, Math.min(near.r, 3.2));
+      if (U.dist(this.player.x, this.player.y, pos.x, pos.y) <= reach) return near;
     }
     return null;
   };
@@ -850,4 +862,4 @@
   };
 
   ER.Game = Game;
-})(window.ER = window.ER || {});
+})(typeof window !== 'undefined' ? (window.ER = window.ER || {}) : (global.ER = global.ER || {}));

@@ -23,7 +23,7 @@ global.localStorage = (function () {
 
 ['core/rng', 'core/util', 'core/save', 'world/names', 'world/time', 'world/town',
   'quest/items', 'quest/pool', 'quest/pool2', 'quest/director',
-  'world/residents'].forEach(function (f) {
+  'world/residents', 'game'].forEach(function (f) {
   try { require(path.join(SRC, f + '.js')); } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') throw e;
   }
@@ -93,6 +93,42 @@ ok(town.w * town.h === 4000000, 'the town should be four square kilometres');
   });
   ok(bad.length === 0, 'props with nowhere to stand: ' + bad.join(', '));
 })();
+
+/* Reaching a prop you are standing on. This calls the real pickProp, on a
+   stub whose crosshair sees nothing, standing 2.6 m from the moss on the old
+   stone bridge -- inside the prop's own 3.2 m radius and inside the hit volume
+   the crosshair uses, but further out than the flat 2.2 m the fallback used to
+   allow. The crosshair cannot rescue you from in there either: the only
+   intersection is the far wall of the volume, and for a 3.2 m sphere entered
+   near one edge that lands at 5.6 m, past the 5.4 m it reaches. So the thing
+   was unpickable exactly when you were standing on it. */
+(function () {
+  if (!ER.Game) { ok(false, 'game.js did not load, so pickProp is untested'); return; }
+  var moss = town.props.bridge_stone_moss;
+  ok(moss && moss.r > 2.2, 'this test needs a prop wider than the old 2.2 m cap');
+  if (!moss) return;
+  var pos = town.propPos(moss);
+  function standingAt(dy) {
+    return ER.Game.prototype.pickProp.call({
+      town: town,
+      player: { x: pos.x, y: pos.y + dy },
+      director: { currentStep: function () { return null; } },
+      view: { pick: function () { return null; } },
+      scene3d: { raycastTargets: [] }
+    });
+  }
+  var on = standingAt(0.5);
+  ok(on && on.id === 'bridge_stone_moss',
+    'standing on the bridge moss picks ' + (on ? on.id : 'nothing'));
+  var out = standingAt(2.6);
+  ok(out && out.id === 'bridge_stone_moss',
+    'standing 2.6 m from the bridge moss, inside its ' + moss.r +
+    ' m radius, picks ' + (out ? out.id : 'nothing'));
+  /* but a wide prop must not be interactable from across a field */
+  var away = standingAt(12);
+  ok(!away || away.id !== 'bridge_stone_moss',
+    'the moss should not be reachable from 12 m away');
+}());
 
 /* Paved ground has to read as paved. The renderer and terrainAt work off the
    same town.paving, and when they did not, grass grew through the front walk. */
