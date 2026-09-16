@@ -120,6 +120,26 @@
   Clock.prototype.sunrise = function () { return 6.9 + (this.day * 0.008); };
   Clock.prototype.sunset = function () { return 19.4 - (this.day * 0.011); };
 
+  /* The sun's altitude in degrees, from real geometry, anchored so that it is
+     exactly zero at this day's sunrise and sunset. Choose a latitude and solve
+     for the declination that produces the day length we already committed to:
+         cos(H at sunset) = -tan(latitude) tan(declination)
+     One continuous curve then covers the day and the night both, which is what
+     gives twilight its real length -- roughly ninety minutes here rather than
+     the thirty-five an offset cosine was producing. The sky reads this; it
+     used to keep a second, disagreeing copy of it. */
+  var LAT = 41.5 * Math.PI / 180;
+  Clock.prototype.sunElevation = function (hourFloat) {
+    var h = hourFloat === undefined ? this.hourFloat() : hourFloat;
+    var sr = this.sunrise(), ss = this.sunset();
+    var Hss = ((ss - sr) / 2) * 15 * Math.PI / 180;
+    var decl = Math.atan(-Math.cos(Hss) / Math.tan(LAT));
+    var H = (h - (sr + ss) / 2) * 15 * Math.PI / 180;      /* 15 degrees an hour */
+    var sinElev = Math.sin(LAT) * Math.sin(decl) +
+                  Math.cos(LAT) * Math.cos(decl) * Math.cos(H);
+    return Math.asin(U.clamp(sinElev, -1, 1)) * 180 / Math.PI;
+  };
+
   /* named part of day — quests key off 'dusk' constantly */
   Clock.prototype.phase = function () {
     var h = this.hourFloat(), sr = this.sunrise(), ss = this.sunset();

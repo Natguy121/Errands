@@ -180,6 +180,21 @@ photograph would each hitch. Paying once behind the loading bar is strictly
 better, and on a software rasteriser the difference is seconds per stall
 rather than milliseconds.
 
+**The sun** is real geometry rather than a curve that looked about right. The
+clock commits to a sunrise and a sunset, and `Clock.sunElevation` picks the
+declination that produces exactly that day length at a northern latitude --
+`cos(H at sunset) = -tan(lat) tan(decl)` -- so one continuous curve covers the
+day and the night and the sun sits exactly on the horizon at the moment the
+clock calls sunset. This matters more than it sounds like it should. The
+previous version was an offset cosine that put the sun four degrees *under* the
+horizon at its own sunset and then handed over to a separate night curve twelve
+minutes later, jumping two degrees in an instant. Twilight came out at
+thirty-five minutes instead of ninety and skipped the warm part altogether, so
+7:24 PM -- labelled "Dusk" in the corner of the screen, and the hour a good
+many errands send you to the cemetery -- rendered as deep night. The clock owns
+the model now, because the sky and the errand gates keying off dusk must not
+be able to disagree about where the sun is.
+
 **Sky.** An analytic scattering-shaped gradient driven by the sun's elevation
 through ten hand-tuned stops, with a real sun disc, a tight Mie lobe, a wide
 aureole, two layers of drifting fbm cloud lit from the sun's side, stars with a

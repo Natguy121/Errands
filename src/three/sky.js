@@ -12,8 +12,8 @@
   /* elevation in degrees -> what the sky looks like.
      keep these sorted ascending; everything between is interpolated. */
   var STOPS = [
-    { e: -90, zen: 0x05070e, hor: 0x0a0e18, sun: 0x0a0e18, sunI: 0.00, amb: 0x151d33, ambI: 0.115, fog: 0x0a0e17, haze: 0.10 },
-    { e: -14, zen: 0x080c16, hor: 0x141a26, sun: 0x161a24, sunI: 0.00, amb: 0x1a2440, ambI: 0.16,  fog: 0x121826, haze: 0.18 },
+    { e: -90, zen: 0x06080f, hor: 0x0d121e, sun: 0x0d121e, sunI: 0.00, amb: 0x24304f, ambI: 0.26,  fog: 0x11182a, haze: 0.10 },
+    { e: -14, zen: 0x0a0e1a, hor: 0x171e2c, sun: 0x161a24, sunI: 0.00, amb: 0x2b3862, ambI: 0.34,  fog: 0x1a2336, haze: 0.18 },
     { e:  -8, zen: 0x141d33, hor: 0x40384a, sun: 0x3a2c38, sunI: 0.06, amb: 0x2f3b58, ambI: 0.34,  fog: 0x2d3040, haze: 0.42 },
     { e:  -4, zen: 0x27395c, hor: 0x8a5250, sun: 0x8c4a34, sunI: 0.30, amb: 0x4d5f84, ambI: 0.56,  fog: 0x5c5560, haze: 0.70 },
     { e:  -1, zen: 0x3a5480, hor: 0xc9764c, sun: 0xd2643a, sunI: 0.85, amb: 0x66789c, ambI: 0.72,  fog: 0x94765f, haze: 0.92 },
@@ -219,13 +219,9 @@
     var sr = clock.sunrise(), ss = clock.sunset();
     var h = clock.hourFloat();
     var dayLen = ss - sr;
-    /* -0.5 .. 0.5 across the day, continuing past for the night */
-    var t = (h - (sr + ss) / 2) / dayLen;
-    var elev = Math.cos(t * Math.PI) * 54 - 4;          /* peaks near 50 deg */
-    if (h < sr - 0.2 || h > ss + 0.2) {
-      var nightT = h < sr ? (h + 24 - ss) / (24 - dayLen) : (h - ss) / (24 - dayLen);
-      elev = -6 - Math.sin(nightT * Math.PI) * 48;
-    }
+    /* the clock owns the solar model, so the sky and the errand gates that
+       key off dusk cannot drift apart */
+    var elev = clock.sunElevation(h);
     /* azimuth: rises in the east (+x), sets in the west (-x), south at noon (+z here) */
     var az = U.lerp(-100, 100, U.clamp((h - sr) / dayLen, -0.6, 1.6)) * Math.PI / 180;
     var e = elev * Math.PI / 180;
@@ -275,7 +271,7 @@
     this.hemi.intensity = s.ambI * ambBoost;
 
     this.fill.color.copy(s.amb);
-    this.fill.intensity = 0.14 + cloud * 0.10 + (sv.elev < -6 ? 0.22 : 0);
+    this.fill.intensity = 0.14 + cloud * 0.10 + (sv.elev < -6 ? 0.30 : 0);
     this.fill.position.set(-sv.dir.x, Math.max(0.35, sv.dir.y * 0.4 + 0.4), -sv.dir.z).multiplyScalar(100);
 
     /* keep the shadow volume tight around wherever you are standing */

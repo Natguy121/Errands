@@ -372,6 +372,52 @@ if (ER.populate) {
   ok(sawDusk && sawNight && sawNoon, 'a day should contain midday, dusk and night');
   ok(duskMinutes > 40, 'dusk should last long enough to trace a gravestone in; it lasts ' +
     duskMinutes + ' minutes');
+  /* the sun. It has to be on the horizon at the clock's own sunrise and
+     sunset, and it has to get there without jumping, or dusk lands in the
+     wrong colour band and half the errands are sent out into the dark. */
+  (function () {
+    var sc = new ER.Clock('suntest');
+    for (var day = 1; day < 40; day += 7) {
+      sc.day = day;
+      var sr = sc.sunrise(), ss = sc.sunset();
+      ok(Math.abs(sc.sunElevation(sr)) < 0.15,
+        'day ' + day + ': the sun is ' + sc.sunElevation(sr).toFixed(2) +
+        ' deg off the horizon at sunrise');
+      ok(Math.abs(sc.sunElevation(ss)) < 0.15,
+        'day ' + day + ': the sun is ' + sc.sunElevation(ss).toFixed(2) +
+        ' deg off the horizon at sunset');
+      /* continuous: no step bigger than a degree over a one-minute sweep */
+      var worst = 0, at = 0, prev = sc.sunElevation(0);
+      for (var m = 1; m <= 24 * 60; m++) {
+        var e = sc.sunElevation(m / 60);
+        if (Math.abs(e - prev) > worst) { worst = Math.abs(e - prev); at = m / 60; }
+        prev = e;
+      }
+      ok(worst < 0.4, 'day ' + day + ': the sun jumps ' + worst.toFixed(2) +
+        ' deg at hour ' + at.toFixed(2));
+      /* highest at solar noon, lowest at solar midnight */
+      var noon = sc.sunElevation((sr + ss) / 2);
+      ok(noon > 40 && noon < 62, 'day ' + day + ': noon sun at ' + noon.toFixed(1) + ' deg');
+      var mid = sc.sunElevation(((sr + ss) / 2 + 12) % 24);
+      ok(mid < -30, 'day ' + day + ': midnight sun at ' + mid.toFixed(1) + ' deg');
+      /* civil twilight -- the sun between 0 and -6 -- must last a while */
+      var civil = 0;
+      for (var q = 0; q < 24 * 60; q++) {
+        var ee = sc.sunElevation(q / 60);
+        if (ee < 0 && ee > -6) civil++;
+      }
+      ok(civil > 50, 'day ' + day + ': civil twilight lasts only ' + civil +
+        ' minutes across both ends of the day');
+    }
+    /* and the phase the clock names must match where the sun actually is */
+    sc.day = 1;
+    sc.minutes = (sc.sunset() + 0.1) * 60;
+    ok(sc.phase() === 'dusk', 'just after sunset should be dusk, not ' + sc.phase());
+    ok(sc.sunElevation() > -3,
+      'dusk should still have the sun near the horizon, not at ' +
+      sc.sunElevation().toFixed(1) + ' deg');
+  }());
+
   /* and the errands that want dusk must agree with the clock about when it is */
   var duskWindow = { h0: 18.4, h1: 20.1 };
   var overlap = 0;
