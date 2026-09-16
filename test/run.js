@@ -107,6 +107,20 @@ ok(town.w * town.h === 4000000, 'the town should be four square kilometres');
     if (!PAVED[t]) soft.push(p.kind + ' pad at ' + p.x + ',' + p.y + ' reads as ' + t);
   }
   ok(soft.length === 0, 'paving that is not paved underfoot: ' + soft.join('; '));
+  /* and the graded shoulder the renderer draws in gravel must read as gravel,
+     or grass grows up through it */
+  var verge = [];
+  for (var v = 0; v < town.roads.length; v++) {
+    var rd = town.roads[v], mid = rd.pts[Math.floor(rd.pts.length / 2)];
+    var nxt = rd.pts[Math.floor(rd.pts.length / 2) + 1] || rd.pts[0];
+    var dx = nxt[0] - mid[0], dy = nxt[1] - mid[1], L = Math.hypot(dx, dy) || 1;
+    /* step sideways off the centreline, into the middle of the shoulder */
+    var off = rd.width / 2 + rd.shoulder * 0.5;
+    var sx = mid[0] - (dy / L) * off, sy = mid[1] + (dx / L) * off;
+    var t2 = town.terrainAt(sx, sy);
+    if (!PAVED[t2]) verge.push((rd.name || 'a road') + "'s shoulder reads as " + t2);
+  }
+  ok(verge.length === 0, 'shoulders that are not paved underfoot: ' + verge.join('; '));
   for (var k = 0; k < town.pavedStrips.length; k++) {
     var st = town.pavedStrips[k];
     var mx = (st.x0 + st.x1) / 2, my = (st.y0 + st.y1) / 2;

@@ -1070,6 +1070,10 @@
         rd = town.roads[k];
         nr = polyNearest(rd.pts, x, y);
         if (nr.d < rd.width / 2) return rd.kind;
+        /* the graded shoulder. The renderer lays gravel out to here, so this
+           has to say gravel too -- otherwise tufts of lawn grow up through
+           visibly pebbled ground and your footsteps on it sound like grass. */
+        if (nr.d < rd.width / 2 + rd.shoulder) return 'gravel';
         if (rd.bulb && U.dist(x, y, rd.bulb.x, rd.bulb.y) < rd.bulb.r) return rd.kind;
       }
       nr = polyNearest(town.creek.pts, x, y);

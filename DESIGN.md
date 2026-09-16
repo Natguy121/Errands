@@ -263,6 +263,16 @@ worth writing down because each one looks exactly like the others:
    `totalEmissiveRadiance` by zero -- the town never lit up at night, and the
    cause was not the lighting code but a flag set on a material.
 
+**Match the blades to the ground.** A tuft card seen almost edge-on is a
+one-pixel sliver, and if the card is much brighter than the terrain it stands
+in, every one of those slivers reads as a bright scratch -- six thousand of
+them and the lawn looks combed rather than grown. The terrain grass albedo
+averages about rgb(101,117,55), and the blades had drifted forty per cent over
+that while they were being brightened to chase what turned out to be the
+`vertexColors` bug. Isolating it took one render with the tufts hidden and one
+with the terrain hidden: each was clean on its own, which ruled out both and
+pointed at the contrast between them.
+
 **Displace by position, not by index.** `IcosahedronGeometry` is non-indexed:
 every face carries its own copy of each corner. The tree canopies were being
 kicked about with a per-vertex random, which gave the same corner a different

@@ -52,7 +52,15 @@
     var key = tall ? '_grassTall' : '_grassTuft';
     if (this[key]) return this[key];
     var SZ = 128;
-    var base = tall ? '#a3a566' : '#7d9450';
+    /* Near enough to the ground they grow out of. A tuft card seen almost
+       edge-on is a one-pixel sliver, and if the card is much brighter than
+       the terrain every one of those slivers reads as a bright scratch --
+       six thousand of them and the lawn looks combed. Measured: the terrain
+       grass albedo sits around rgb(101,117,55), so the blades want to be a
+       little above that and no more. They were forty per cent over, from
+       when they were being brightened to chase what turned out to be the
+       vertexColors bug instead. */
+    var base = tall ? '#8d9058' : '#6b7f46';
     var colour = document.createElement('canvas');
     colour.width = colour.height = SZ;
     var cc = colour.getContext('2d');
@@ -73,14 +81,14 @@
       var top = rng.float(tall ? 4 : 26, tall ? 32 : 76);
       var lean = rng.float(-20, 20);
       var hue = rng.pick(tall
-        ? ['#b6b96e', '#c3c87c', '#a0a560', '#cdc684']
-        : ['#8aa257', '#9ab066', '#7a9049', '#a6b46c']);
+        ? ['#9ba05e', '#a6ab68', '#8a8f52', '#b0ae70']
+        : ['#6d8146', '#788b50', '#64783e', '#82925a']);
       var grad = cc.createLinearGradient(0, top, 0, SZ);
       grad.addColorStop(0, hue);
       grad.addColorStop(0.55, hue);
       /* only a little darker at the root: a blade of grass in sunlight is not
          a silhouette, and making it one is what reads as black */
-      grad.addColorStop(1, tall ? '#7e8248' : '#5f7539');
+      grad.addColorStop(1, tall ? '#6b6e3c' : '#4d5f30');
 
       function blade(ctx, style) {
         ctx.fillStyle = style;
@@ -347,7 +355,7 @@
         q.setFromEuler(e);
         m.compose(new T.Vector3(x, h(x, z) - 0.03, z), q, new T.Vector3(wide, sc, wide));
         set.mesh.setMatrixAt(i, m);
-        var v = rng.float(0.74, 1.22);
+        var v = rng.float(0.76, 1.08);
         set.mesh.setColorAt(i, new T.Color(v * (tall ? 1.05 : 1), v, v * 0.88));
       }
       set.mesh.instanceMatrix.needsUpdate = true;
