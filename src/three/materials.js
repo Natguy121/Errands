@@ -541,11 +541,14 @@
       for (var k = 0; k < d.length; k += 4) {
         var px = (k / 4) % SIZE, py = Math.floor((k / 4) / SIZE);
         var v = d[k] / 255;
-        var g2 = U.lerp(96, 172, v);
-        var moss = U.clamp((mn.fbm(px / 26, py / 26, 3) - 0.52) * 4, 0, 1);
-        d[k] = U.lerp(g2 * 1.02, 74, moss);
-        d[k + 1] = U.lerp(g2, 96, moss);
-        d[k + 2] = U.lerp(g2 * 0.92, 56, moss);
+        var g2 = U.lerp(150, 232, v);   /* it is always tinted; keep it pale */
+        /* Damp in the joints, not mildew over everything. This runs on the
+           paving of the whole quarter now, and at full strength it read as
+           green blotches across every alley and the square. */
+        var moss = U.clamp((mn.fbm(px / 26, py / 26, 3) - 0.66) * 3.4, 0, 1) * 0.5;
+        d[k] = U.lerp(g2 * 1.02, 126, moss);
+        d[k + 1] = U.lerp(g2, 136, moss);
+        d[k + 2] = U.lerp(g2 * 0.92, 104, moss);
       }
       ac.putImageData(img, 0, 0);
       return { albedo: a, height: h, rough: [0.66, 0.94], normalStrength: 2.4 };
@@ -569,11 +572,23 @@
     water: function () {
       var h = canvas(); var hc = h.getContext('2d');
       noiseFill(hc, SIZE, 10, 'waterH', 0.35, 0.65, 3);
+      /* Near-white, because the sea's colour comes from the material tint.
+         Painted at #2e4a50 it multiplied with the tint down to half a per
+         cent reflectance and the Mediterranean rendered black. */
       var a = canvas(); var ac = a.getContext('2d');
-      ac.fillStyle = '#2e4a50'; ac.fillRect(0, 0, SIZE, SIZE);
-      return { albedo: a, height: h, rough: [0.05, 0.2], normalStrength: 0.7 };
+      ac.fillStyle = '#eef4f5'; ac.fillRect(0, 0, SIZE, SIZE);
+      ac.globalAlpha = 0.16; ac.drawImage(h, 0, 0); ac.globalAlpha = 1;
+      return { albedo: a, height: h, rough: [0.05, 0.2], normalStrength: 0.7, white: true };
     }
   };
+
+  /* Metalness only pays off against an environment to reflect, and this
+     renderer has none: the sky is a shader on a dome, not a cubemap. A metal
+     surface here loses its diffuse and gets nothing back, so the iron of the
+     lamps and the overhead wires came out at rgb(0,0,0) — ink, not metal. Cap
+     it low enough that everything keeps a diffuse term, and let the roughness
+     and the normal maps do the work of looking like metal. */
+  var METAL_CAP = 0.2;
 
   /* ---------------- public ---------------- */
 
@@ -600,7 +615,7 @@
       normalMap: tex(m.normal, rep),
       roughnessMap: tex(m.rough, rep),
       color: opts.color !== undefined ? new T.Color(opts.color) : 0xffffff,
-      metalness: opts.metalness !== undefined ? opts.metalness : 0.0,
+      metalness: opts.metalness !== undefined ? Math.min(opts.metalness, METAL_CAP) : 0.0,
       roughness: opts.roughness !== undefined ? opts.roughness : 1.0,
       side: opts.side || T.FrontSide
     });
@@ -622,7 +637,7 @@
     return new T.MeshStandardMaterial({
       color: new T.Color(color),
       roughness: rough === undefined ? 0.7 : rough,
-      metalness: metal === undefined ? 0 : metal,
+      metalness: metal === undefined ? 0 : Math.min(metal, METAL_CAP),
       side: opts.side || T.FrontSide,
       transparent: !!opts.transparent,
       opacity: opts.opacity === undefined ? 1 : opts.opacity,

@@ -70,6 +70,7 @@
   Game.prototype.buildWorld = function (onProgress) {
     var steps = [
       ['the rock the quarter stands on', function (g) { g.scene3d.buildTerrain(); }],
+      ['the rest of the town, at a distance', function (g) { g.scene3d.buildSurrounds(); }],
       ['eight alleys', function (g) { g.scene3d.buildRoads(); }],
       ['the square and the quay', function (g) { g.scene3d.buildPads(); }],
       ['the sea', function (g) { g.scene3d.buildWater(); }],
@@ -774,7 +775,11 @@
       var wxMul = { storm: 3.4, rain: 1.9, drizzle: 1.3, fog: 0.4 }[this.clock.weather] || 1;
       for (var m = 0; m < this.windMats.length; m++) {
         var u = this.windMats[m].userData.windUniform;
-        if (u) { u.value.x = this.t * 1.5; u.value.z = this.windMats[m].userData.wind.value.z * gust * wxMul; }
+        if (u) {
+          u.value.x = this.t * 1.5;
+          /* from the stored base, not from the uniform's own current value */
+          u.value.z = this.windMats[m].userData.windBase * gust * wxMul;
+        }
       }
     }
     if (this.rain) this.rain.update(this.clock, this.view.camera.position, dt, this.town.heightAt);

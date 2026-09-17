@@ -210,9 +210,10 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   say('eye height holds ' + terrainFollow[0].toFixed(2) + ' m over ground on a hill, a bridge, a ridge and a field');
 
   /* ---- 4. places, hours, weather ---- */
+  /* yaw 0 looks down -z, so these are the yaws that look along the alley */
   var scenes = [
-    ['02-main-street-midday', 1040, 1008, Math.PI * 1.5, 12.4, 'fair'],
-    ['03-concrete-bridge-rain', 1455, 1014, Math.PI * 0.5, 15.0, 'rain']
+    ['02-souk-midday', 7.8, 26.1, Math.atan2(-34.2, 2.0), 12.4, 'fair'],
+    ['03-quay-rain', 8.2, 41.6, Math.atan2(0.0, 39.0), 15.0, 'rain']
   ];
   if (QUICK) scenes = [];
   for (var s2 = 0; s2 < scenes.length; s2++) {
@@ -241,10 +242,10 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   var picks = await page.evaluate(function () {
     var g = window.game, out = [];
     var cases = [
-      ['home_mailbox', 0, -0.3, 2.6],
-      ['hydrant_0', 0, -0.32, 2.4],
-      ['bendmart_counter', 0, -0.1, 3.0],
-      ['bridge_stone_moss', 0, -0.5, 2.6]
+      ['plate_h01', 0, -0.2, 2.4],
+      ['fountain', 0, -0.32, 2.4],
+      ['dukkan_counter', 0, -0.1, 2.8],
+      ['wall_mooring', 0, -0.4, 2.4]
     ];
     for (var c = 0; c < cases.length; c++) {
       var p = g.town.props[cases[c][0]];
@@ -280,7 +281,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   var held = await page.evaluate(function () {
     var g = window.game;
     g.director.issue('rusted_nail');
-    var p = g.town.props.farmhouse_collapsed;
+    var p = g.town.props.mahjour_room;
     g.view.pos.x = p.rect.x + p.rect.w / 2;
     g.view.pos.z = p.rect.y + p.rect.h / 2;
     g.view.pos.y = g.town.heightAt(g.view.pos.x, g.view.pos.z);
@@ -324,9 +325,12 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     var g = window.game, d = g.director;
     d.issue('flattened_cap');
     var errand = d.active, guard = 0;
-    var prop = g.town.props.oldlot;
-    g.view.pos.x = prop.rect.x + prop.rect.w / 2;
-    g.view.pos.z = prop.rect.y + prop.rect.h / 2;
+    /* the template picks its own patch of cracked paving, so ask the step
+       where it wants you rather than naming a prop the town may not have */
+    var prop = g.town.props[errand.steps[0].at];
+    var pos = g.town.propPos(prop);
+    g.view.pos.x = pos.x; g.view.pos.z = pos.y;
+    g.view.pos.y = g.town.heightAt(pos.x, pos.y);
     g.player.x = g.view.pos.x; g.player.y = g.view.pos.z;
     while (d.active === errand && guard++ < 200) d.perform(prop);
     return { finished: d.active !== errand, next: d.active ? d.active.title : null,
@@ -341,9 +345,9 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     var g = window.game;
     g.clock.minutes = 12 * 60;
     g.clock.setWeather('fair');
-    g.view.pos.x = 1040; g.view.pos.z = 1012;
-    g.view.pos.y = g.town.heightAt(1040, 1012);
-    g.view.yaw = Math.PI * 1.5;
+    g.view.pos.x = 21.4; g.view.pos.z = 25.2;
+    g.view.pos.y = g.town.heightAt(21.4, 25.2);
+    g.view.yaw = Math.atan2(-20.0, 1.0);
     var start = g.people.map(function (r) { return [r.x, r.y]; });
     for (var i = 0; i < 200; i++) g.update(0.05);
     var moved = 0;
@@ -368,7 +372,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   say(folk.moved + ' residents walked their routines; ' + folk.visible + ' rigs on screen, all on the ground; ' +
     folk.away + ' out of town, ' + folk.met + ' met, ' + folk.talking + ' talking');
   await tick(0.4);
-  await uiShot('24-main-street-noon');
+  await uiShot('24-souk-noon');
 
   /* ---- 10. lingering ---- */
   var lingered = await page.evaluate(function () {
@@ -384,9 +388,9 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   /* ---- 11. cost per frame ---- */
   var perf = await page.evaluate(function () {
     var g = window.game;
-    g.view.pos.x = 1040; g.view.pos.z = 1008;
-    g.view.pos.y = g.town.heightAt(1040, 1008);
-    g.view.yaw = Math.PI * 1.5;
+    g.view.pos.x = 7.8; g.view.pos.z = 26.1;
+    g.view.pos.y = g.town.heightAt(7.8, 26.1);
+    g.view.yaw = Math.atan2(-34.2, 2.0);
     function avg(fn, n) { var t = performance.now(); for (var i = 0; i < n; i++) fn(); return (performance.now() - t) / n; }
     var up = avg(function () { g.update(1 / 60); }, 40);
     var full = avg(function () { g.render(); }, 4);

@@ -15,203 +15,224 @@
 
   var GENERIC = [
     /* 0 — you are new and that is the whole of it */
-    ["You're in the old Latham place, right? Somebody said it went.",
+    ["You're in the back room at number 6, no? Somebody said it went.",
      "Welcome. Nothing happens here, which some people are after.",
-     "Trash is Thursday. They come early, so put it out Wednesday.",
-     "Water pressure's poor on that side of Depot. Going in, you should know.",
-     "If you need anything, we're the one with the blue door.",
-     "You'll get used to the trains not coming.",
-     "Internet's fine. Everybody asks that first.",
-     "That your car out front, or does it belong to the house?"],
+     "The water comes Tuesday and Friday. Fill everything you have.",
+     "Power cuts at noon and comes back when it comes back.",
+     "If you need anything, we're the blue door, up the steps.",
+     "You'll get used to the church bell. Everybody says that.",
+     "The internet is fine. Everyone asks that first.",
+     "Don't park anything on the souk. Not that you have anything."],
 
     /* 1 — they have started to notice the walking */
     ["You walk a lot.",
      "Third time I've seen you today. Not counting this.",
-     "Saw you out on the grade yesterday. Long way to go on foot.",
-     "You lose something? I can help you look.",
+     "You were out on the wall yesterday. In that sun.",
+     "You lose something? I'll help you look.",
      "You're out in all weather, aren't you.",
-     "My wife says you're the walker. That's you, then.",
+     "My wife says you're the one who walks. That's you, then.",
      "You always have your hands full.",
-     "I'd offer you a ride but you never seem to be going anywhere."],
+     "Where is it you're going, all day, in a quarter this size?"],
 
     /* 2 — puzzled, and honest about being puzzled */
     ["What is it you're doing, exactly? I'm not being nosy.",
-     "Somebody said you were up at the cemetery. In the dark.",
+     "Somebody said you were down at the chapel rocks. After dark.",
      "You're always carrying something. What's in the jar?",
      "Is this for work? Is it a job, what you're doing?",
      "Are you writing something? A book, or.",
-     "My boy says you were counting the water tower.",
+     "My boy says you were counting the wires over the souk.",
      "I watched you look at a wall for ten minutes yesterday.",
      "Somebody's got you doing all this, or is it you?"],
 
     /* 3 — concerned, and trying to be light about it */
     ["You eating? I'm asking as a neighbour.",
-     "You can come sit inside, you know. Any time.",
+     "Come in and sit. Any time, I mean it.",
      "Listen. Is somebody making you do this?",
      "I won't ask again. But I did wonder.",
-     "You've lost weight since you came.",
-     "There's nothing out there. I've lived here fifty years.",
+     "You've got thinner since you came.",
+     "There's nothing out there. I've lived here sixty years.",
      "It's alright if you don't want to say.",
-     "Come by on Sunday. Just come by."],
+     "Sunday, after the mass. Just come by."],
 
     /* 4 — they have stopped asking and started helping */
     ["Don't tell me. I'd rather find out later.",
-     "Moss is better on the north side this time of year. I looked it up for you.",
-     "I put something by for you. It's on your porch.",
-     "You'll want the ditch past the stone bridge. Nobody mows it.",
+     "The capers are better on the north face of the wall this month. I looked.",
+     "I left something for you. It's on your step.",
+     "Try the cracks by the fountain. Nobody sweeps there.",
      "Whatever it is, you're nearly done, I'd say.",
-     "I told Deb to leave you be.",
+     "I told Teta to leave you be.",
      "We talk about it. Not unkindly.",
-     "You were right about the drain. I went and checked."]
+     "You were right about the drain. I went and looked."]
   ];
 
   var BYKIND = {
-    clerk: [
-      ["Bag? No bag. Right."],
+    lemonade: [
+      ["One glass? It's one price whatever you say."],
       ["You're in most days now."],
-      ["That's the fourth jar this week. Not judging."],
-      ["You want the receipt? You always want the receipt."],
-      ["Jars are on aisle two. I ordered more in for you."]
+      ["That's the fourth jar this week. I'm not judging."],
+      ["You want the receipt. You always want the receipt."],
+      ["I keep the good lemons at the back for you now."]
     ],
-    diner: [
-      ["Coffee's on. Sit anywhere, it's all the same."],
-      ["You want the usual? You don't have a usual yet."],
+    furn: [
+      ["Manouche? It's five minutes, the oven's on."],
+      ["You come past at the same time the bread does."],
       ["You measured my step. I saw you measure my step."],
-      ["Sit down and eat something. On me, I don't care."],
-      ["Your usual. Don't argue, it's already poured."]
+      ["Sit down and eat something. It's on me, don't argue."],
+      ["Your kaak is under the cloth. It's been there since six."]
     ],
-    post: [
-      ["Your box is 14. Key's stiff, wiggle it."],
-      ["Nothing for you today. Nothing yesterday either."],
-      ["You read that whole board out loud. Both sides."],
-      ["If you're expecting something, it isn't coming."],
-      ["I left the board up longer. Figured you'd want to read it again."]
-    ],
-    hardware: [
-      ["Whatever you're after, I've got one of it."],
-      ["Twine again?"],
-      ["You want my break-room spoon back? You still have my spoon."],
+    dukkan: [
+      ["Bag? No bag. Right."],
+      ["You're in here more than my brother."],
+      ["Twine again? That's the third roll."],
       ["Take the pencil. Just take it."],
-      ["Baling wire's cut to length by the door. I do it Mondays now."]
+      ["Jars are behind the door. I order them in for you now."]
     ],
-    pastor: [
-      ["We're at ten thirty, if you ever want. No pressure at all."],
-      ["I see you go past the church most evenings."],
-      ["The mint behind the church is yours if you want it. It's only mint."],
+    sabon: [
+      ["Olive oil and laurel. Nothing else in it, ever."],
+      ["You touch every bar and buy one. That's fine."],
+      ["You counted the pyramid. Nobody has ever counted the pyramid."],
+      ["Take a bar. It's soap, it isn't gold."],
+      ["I stack it the same way every Monday now. In case you check."]
+    ],
+    qahwe: [
+      ["Coffee's on. Sit anywhere, they're all the same chair."],
+      ["You want your usual? You don't have a usual yet."],
+      ["You were out there counting the chairs. I watched you."],
+      ["Sit. Drink something. I don't want your money."],
+      ["Your cup's poured. It was poured before you turned the corner."]
+    ],
+    barber: [
+      ["The pole doesn't turn. It hasn't turned since the war."],
+      ["You don't need a cut. You need a sit down."],
+      ["Everybody tells me things. You tell me nothing."],
+      ["Come Thursday. Just to sit, even."],
+      ["I don't repeat what's said in my chair. Not about you."]
+    ],
+    fisher: [
+      ["Wind's coming round. It'll be up by four."],
+      ["You're on the wall at the same hour I am."],
+      ["You took one urchin shell. One."],
+      ["Anything in the net you want, take it. It's all going back anyway."],
+      ["I leave the small stuff on the stone for you. Don't make it strange."]
+    ],
+    priest: [
+      ["Half past seven, if you ever want. No pressure at all."],
+      ["I see you go past the chapel most evenings."],
+      ["The mint behind the sacristy is yours. It's only mint."],
       ["Whatever you're carrying, you can set it down for an hour."],
-      ["I put the cemetery gate light on a timer. For dusk."]
+      ["I leave the side door on the latch now. For the evenings."]
     ],
-    kid: [
-      ["Are you the new guy? My mom says don't bother people."],
-      ["What's in your pockets? Mine's got a spring in it."],
-      ["Why do you do that? No, but WHY?"],
-      ["I collect stuff too. Do you want to see my stuff?"],
-      ["I found you a nail. It's the rusty kind. I looked for ages."]
+    sacristan: [
+      ["Candles are twenty-five a box. I count them, so."],
+      ["You come by when I'm locking up. Every time."],
+      ["You counted the candles. I count the candles."],
+      ["Light one if you want. You don't have to pay for it."],
+      ["I left the last one burning. You'll see it from the quay."]
     ],
-    teen: [
-      ["Hey."],
-      ["You're out here again."],
-      ["Are you, like, a surveyor?"],
-      ["Honestly this is the most interesting thing that's happened."],
-      ["I put a bottle cap on your porch. Flat one. Old kind."]
+    teta: [
+      ["Come up. I'm on the balcony, I'm always on the balcony."],
+      ["I see everything from here. Everything."],
+      ["What is it you carry? Come up and show me."],
+      ["You're too thin. Come up, there's food."],
+      ["I watch for you around four. It breaks up the day."]
     ],
-    walker: [
-      ["Morning. Second lap, me."],
-      ["We keep meeting. You go one way, I go the other."],
-      ["I do the loop twice. You do — I don't know what you do."],
-      ["Sixty-one years I've walked this road. Never once picked anything up."],
-      ["I've started looking at the ground. Thanks for that."]
+    waterer: [
+      ["Three doorsteps, none of them mine. Somebody has to."],
+      ["You're up before the pots are."],
+      ["You filled a jar at the fountain. I saw which spout."],
+      ["The fountain's better in the morning. Less sand."],
+      ["I leave the tap loose for you. Don't tell the municipality."]
     ],
-    fire: [
-      ["We test the siren at noon. Don't let it startle you."],
-      ["You were stood in the middle of the ballfield at noon."],
-      ["Nothing out at that farmhouse is safe to stand under."],
-      ["If you go through those floors nobody'll know for a day."],
-      ["Noon test is Saturdays now too. You'll want to know that."]
+    generator: [
+      ["Cut's at noon. I'm on at noon. That's the arrangement."],
+      ["You're out in the dark hours more than I am."],
+      ["You counted my cables. You stood there and counted them."],
+      ["If your room goes dark, come and knock. Any hour."],
+      ["I put your room on the good line. Don't tell the rest."]
     ],
-    farm: [
-      ["Don't mind the dust. That's just September."],
-      ["You're welcome on the ground, just shut the gate."],
-      ["Found your stone on the post. Left it there."],
-      ["If you need clay there's better clay on my side of the creek."],
-      ["I leave the gate open now. Save you the climb."]
+    driver: [
+      ["Tripoli, Byblos, Beirut. Whenever it's full."],
+      ["I pass you twice a day, both directions."],
+      ["You were sat in my car in the rain. It wasn't going anywhere."],
+      ["Get in, I'll run you up the road. No? Alright."],
+      ["I go slow past the steps now. In case you're on them."]
     ],
     remote: [
       ["Sorry — I'm on a call. I'm always on a call."],
-      ["I see you from the window. I'm at the window all day."],
-      ["Do you work? Sorry. That came out wrong."],
-      ["I'd come out but I'm on East Coast hours."],
+      ["I see you from the roof. I'm on the roof all day."],
+      ["Do you work? Sorry, that came out wrong."],
+      ["I'd come down but I'm on Gulf hours."],
       ["I watch for you around four. It breaks up the day."]
     ],
-    retired: [
-      ["Garden's done for the year. That's that."],
-      ["You're busier than I ever was."],
-      ["I used to know what everybody was up to."],
-      ["Sit on the wall a minute. Go on."],
-      ["There's a jar on your step. Pint. It's clean."]
+    guesthouse: [
+      ["Four rooms. Three are empty. It's September."],
+      ["You're out earlier than my guests, and they're German."],
+      ["My guests ask what you're doing. I tell them you're busy."],
+      ["There's a bed if you ever want a proper one."],
+      ["I put you on the breakfast list. You don't have to come."]
     ],
-    school: [
-      ["You'll see the kids at three. Mind the crossing."],
-      ["One of mine did a picture of you. You were bent over."],
-      ["They ask about you. I tell them you're busy."],
-      ["You could come talk to them about — whatever it is."],
-      ["We did a unit on collecting. Your fault entirely."]
-    ],
-    mechanic: [
-      ["Anything running rough, bring it round."],
-      ["You don't drive anywhere, do you."],
-      ["Somebody scraped frost off my windshield and took it."],
-      ["I leave the shop open. Take what you need."],
-      ["Put a box by the door. Rusted stuff. Help yourself."]
-    ],
-    build: [
-      ["Watch the nails. Whole lot's nails."],
-      ["Scrap pile's fair game, just don't climb the framing."],
-      ["You took three nails and stood them up. I saw them standing."],
-      ["Hard hat's in the truck if you're going to be in there."],
-      ["I sort the scrap by size now. Don't read into it."]
+    kite: [
+      ["Wind's rubbish today. Wind's rubbish all week."],
+      ["You're on the steps when I'm coming out of the water."],
+      ["You counted something down there. What's to count?"],
+      ["Swim. Seriously, get in, it's still warm."],
+      ["I keep an eye out for you off the rocks. Habit now."]
     ],
     commuter: [
       ["Just got in. Two hours each way, it's fine."],
       ["You're out here when I go and when I get back."],
       ["Do you sleep? Genuine question."],
-      ["I'd say get a hobby but I think that's what this is."],
-      ["I look for you on the drive in. You're always somewhere."]
+      ["I'd say get a hobby but I think this is one."],
+      ["I look for you on the road down. You're always somewhere."]
+    ],
+    retired: [
+      ["Pots are done for the year. That's that."],
+      ["You're busier than I ever was."],
+      ["I used to know what everybody was up to."],
+      ["Sit on the wall a minute. Go on."],
+      ["There's a jar on your step. Clean one."]
+    ],
+    walker: [
+      ["Morning. Second lap, me."],
+      ["We keep meeting. You go one way, I go the other."],
+      ["I do the wall twice. You do — I don't know what you do."],
+      ["Seventy years on this wall. Never once picked anything up."],
+      ["I've started looking at the stone. Thanks for that."]
+    ],
+    cats: [
+      ["I don't feed them. Whatever you've heard."],
+      ["The blue one knows your step now."],
+      ["You were talking to a cat. I'm not judging, I'm just saying."],
+      ["Sit with them a while. They don't ask anything."],
+      ["The grey one waits at your corner. That's on you now."]
+    ],
+    home_biz: [
+      ["Thursdays, if you ever need anything taken up."],
+      ["Everybody tells me things. You don't tell me anything."],
+      ["Teta says you were at the chapel. Teta says a lot."],
+      ["Come Thursday. Just to sit, even."],
+      ["I don't repeat what's said in my front room. Not about you."]
     ],
     parent: [
       ["Sorry — she's teething. It's all teething."],
-      ["We watch you out the front window. It's a whole thing."],
-      ["She points at you. She points at you and says 'man'."],
+      ["We watch you from the window. It's a whole thing."],
+      ["She points at you. She points and says 'man'."],
       ["Come in for a coffee. The house is a state, I don't care."],
-      ["She collects rocks now. Puts them in a jar. I hope you're happy."]
+      ["She collects stones now. In a jar. I hope you're happy."]
     ],
-    coop: [
-      ["Scale's open till four if you've got anything to weigh."],
-      ["Spill's out back. Nobody minds."],
-      ["You took one kernel. One."],
-      ["I weighed a man's pocket once. Not yours. Yet."],
-      ["Left the scale on for you. Weigh whatever you like."]
+    teen: [
+      ["Hey."],
+      ["You're out here again."],
+      ["Are you, like, a surveyor?"],
+      ["Honestly this is the most interesting thing all summer."],
+      ["I left a bottle cap on your step. Flat one. Old kind."]
     ],
-    custodian: [
-      ["I do the school and the church. Somebody has to."],
-      ["You're out before I am and I'm out at five."],
-      ["I clean up after everybody and you're picking things up. Funny."],
-      ["Don't go in the portable, the floor's soft."],
-      ["I stopped sweeping the backstop. Figured you were using it."]
-    ],
-    bus: [
-      ["Route's the same forty years. Kids change."],
-      ["I pass you twice a day, both directions."],
-      ["You were sat in my shelter in the rain."],
-      ["Get in, I'll run you up the road. No? Alright."],
-      ["I go slow past the grade now. In case you're on it."]
-    ],
-    home_biz: [
-      ["Tuesdays, if you ever want a trim."],
-      ["Everybody tells me things. You don't tell me anything."],
-      ["Deb says you were at the cemetery. Deb says a lot."],
-      ["Come Tuesday. Just to sit, even."],
-      ["I don't repeat what's said in my front room. Not about you."]
+    kid: [
+      ["Are you the new one? My mum says don't bother people."],
+      ["What's in your pockets? Mine's got a spring in it."],
+      ["Why do you do that? No, but WHY?"],
+      ["I collect stuff too. Do you want to see my stuff?"],
+      ["I found you a nail. The rusty kind. I looked for ages."]
     ],
     idle: [
       ["I'm between things. You?"],
@@ -236,7 +257,7 @@
     if (jars >= 2 && tier >= 2) return 'You need a hand with those?';
     if (jars >= 1 && tier >= 3) return "That's a good jar. Don't lose the lid.";
     if ((wx === 'rain' || wx === 'storm') && tier >= 1) return "You're soaked through. Go home.";
-    if (wx === 'fog' && tier >= 2) return "Can't see the tower in this. You'll be out in it anyway.";
+    if (wx === 'fog' && tier >= 2) return "Can't see the wall in this. You'll be out in it anyway.";
     if (ph === 'night' && tier >= 1) return "It's late to be out. Not that it's my business.";
     if (ph === 'dawn' && tier >= 2) return "You beat me up. Nobody beats me up.";
     if (ph === 'dusk' && tier >= 3) return "It goes dark quick this time of year.";

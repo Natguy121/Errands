@@ -11,6 +11,12 @@
 
   /* bend anything tall, in the vertex shader, by how far up the blade it is */
   ER.addWind = function (material, strength, scale) {
+    /* The base strength is kept separately from the live uniform, because
+       uniforms.uWind.value and userData.wind.value are the same Vector4 --
+       reading the strength back out of the uniform to scale it compounds the
+       gust every frame, and after a few hundred frames every blade of grass
+       is displaced by metres. That is what the long green streaks were. */
+    material.userData.windBase = strength || 0.12;
     material.userData.wind = { value: new T.Vector4(0, 0, strength || 0.12, scale || 0.15) };
     material.onBeforeCompile = (function (prev) {
       return function (shader) {

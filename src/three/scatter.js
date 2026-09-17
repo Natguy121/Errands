@@ -22,7 +22,10 @@
     var rng = new ER.RNG('leaf' + kind);
     var cols = kind === 'conifer'
       ? ['#2f4433', '#3a5240', '#243528', '#415c45']
-      : ['#4f6136', '#5d7040', '#3f4f2b', '#6b7d46', '#77803f'];
+      /* Olive, fig and jacaranda in September: grey-green and dusty, not the
+         forest green of a maple. At the old values every tree in the quarter
+         read as one black mass. */
+      : ['#6e7d4c', '#7d8a60', '#5c6b3e', '#8b9468', '#97996b'];
     /* opaque to start with: a canopy is a solid mass, and a transparent
        background on a material with no alpha test renders as black */
     c.fillStyle = cols[0];
@@ -143,14 +146,18 @@
       var g = new T.IcosahedronGeometry(1, detail || 1);
       var nz = new ER.Noise(seed);
       var pos = g.attributes.position;
-      var F = 1.05;
+      /* Two scales of lump: the big one gives the crown its shape, the tight
+         one breaks the silhouette. Smooth, this reads as a green melon. */
+      var F = 1.05, F2 = 3.3;
       for (var k = 0; k < pos.count; k++) {
         var x = pos.getX(k), y = pos.getY(k), z = pos.getZ(k);
         var n = (nz.fbm(x * F + 11.3, y * F + 3.1, 2) +
                  nz.fbm(y * F + 5.7, z * F + 17.2, 2) +
                  nz.fbm(z * F + 23.4, x * F + 7.9, 2)) / 3;
-        var s = 1 + (n - 0.5) * 0.58;
-        pos.setXYZ(k, x * s, y * s * 0.86, z * s);
+        var n2 = (nz.fbm(x * F2 + 2.2, z * F2 + 9.4, 2) +
+                  nz.fbm(y * F2 + 31.7, x * F2 + 4.1, 2)) / 2;
+        var s = 1 + (n - 0.5) * 0.66 + (n2 - 0.5) * 0.30;
+        pos.setXYZ(k, x * s, y * s * 0.84, z * s);
       }
       g.computeVertexNormals();
       /* project UVs so the leaf texture reads at any angle */
@@ -180,7 +187,7 @@
         m.compose(new T.Vector3(tr.x, h(tr.x, tr.y) + sc.y0, tr.y), q,
           new T.Vector3(sc.x, sc.h, sc.z));
         inst.setMatrixAt(k, m);
-        var tint = 0.78 + rng.float(0, 0.34);
+        var tint = 0.9 + rng.float(0, 0.3);
         inst.setColorAt(k, new T.Color(tint, tint * rng.float(0.94, 1.06), tint * 0.92));
       }
       inst.instanceMatrix.needsUpdate = true;
@@ -204,8 +211,11 @@
       return { x: tr.r * 0.10, z: tr.r * 0.10, h: th, y0: 0 };
     }, 'trunks');
 
-    makeInstances(decid, blob('canopy', 2), leafMat, function (tr) {
-      return { x: tr.r * 0.95, z: tr.r * 0.95, h: tr.r * 0.86, y0: tr.r * 1.25 };
+    /* Smaller and higher than they were: in alleys two metres wide a canopy
+       at head height is a green boulder in your face, and the quarter's trees
+       are pruned up to clear the washing anyway. */
+    makeInstances(decid, blob('canopy', 3), leafMat, function (tr) {
+      return { x: tr.r * 0.78, z: tr.r * 0.78, h: tr.r * 0.72, y0: tr.r * 1.55 };
     }, 'canopies');
 
     /* conifers: three stacked cones read better than a blob */
@@ -275,7 +285,7 @@
     /* Almost nothing here is lawn. The quarter is stone, and what grows in
        it grows out of the gaps between the stones, so the tuft count is a
        tenth of what a township of mown yards needed. */
-    var COUNT = 900;
+    var COUNT = 420;
     var inst = new T.InstancedMesh(tuft, mat, COUNT);
     inst.castShadow = false;
     /* no shadow receive: a blade of grass is two centimetres wide and the
@@ -286,7 +296,7 @@
     inst.frustumCulled = false;
     whiteInstanceColours(inst);
     this.root.add(inst);
-    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 11 };
+    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 9 };
 
     /* the taller stuff that grows where nobody mows */
     var wt = this.grassTexture(true);
@@ -294,7 +304,7 @@
       map: wt.map, alphaMap: wt.alpha, alphaTest: 0.42, side: T.FrontSide,
       roughness: 0.92, metalness: 0
     });
-    var WCOUNT = 500;
+    var WCOUNT = 220;
     var weeds = new T.InstancedMesh(tuft, weedMat, WCOUNT);
     weeds.castShadow = false;
     weeds.receiveShadow = false;
@@ -302,12 +312,15 @@
     weeds.frustumCulled = false;
     whiteInstanceColours(weeds);
     this.root.add(weeds);
-    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 14 };
+    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 12 };
   };
 
   /* Redistribute the tufts when you have walked far enough to notice, a slice
      at a time: placing nine thousand of them at once is a visible hitch. */
   var SLICE = 2200;
+
+  /* where anything grows at all */
+  var PATCH = new ER.Noise(ER.hashStr('weedpatches'));
 
   S.updateGrass = function (camX, camZ) {
     var town = this.town, h = this.h;
@@ -350,6 +363,11 @@
            on the swept stone of an alley or the flags of the square */
         var ok = tall ? (terr === 'rock')
           : (terr === 'rock' || terr === 'wall');
+        /* Uniform density over the bare shelf reads as a meadow, and this is
+           a limestone shelf in September. Mask it with low-frequency noise so
+           what grows, grows in pockets — a corner that never gets swept, the
+           lee of a wall — and most of the rock stays rock. */
+        if (ok && PATCH.fbm(x / 7.5, z / 7.5, 3) < (tall ? 0.56 : 0.50)) ok = false;
         if (!ok || town.isBlocked(x, z)) {
           m.makeScale(0, 0, 0);
           m.setPosition(0, -50, 0);
@@ -362,7 +380,7 @@
            squashes every blade into a fat diagonal smear, and a lawn made of
            those reads as brushed fabric rather than grass. Weeds are the other
            way about: taller than they are wide. */
-        var sc = (tall ? rng.float(0.42, 0.80) : rng.float(0.16, 0.27)) * fade;
+        var sc = (tall ? rng.float(0.24, 0.48) : rng.float(0.11, 0.19)) * fade;
         var wide = sc * (tall ? rng.float(0.45, 0.70) : rng.float(0.85, 1.20));
         if (sc < 0.02) {
           m.makeScale(0, 0, 0);
@@ -374,8 +392,10 @@
         q.setFromEuler(e);
         m.compose(new T.Vector3(x, h(x, z) - 0.03, z), q, new T.Vector3(wide, sc, wide));
         set.mesh.setMatrixAt(i, m);
-        var v = rng.float(0.76, 1.08);
-        set.mesh.setColorAt(i, new T.Color(v * (tall ? 1.05 : 1), v, v * 0.88));
+        /* Straw and dry olive, not lawn. What grows out of this rock has
+           been in the sun since May. */
+        var v = rng.float(0.72, 1.04);
+        set.mesh.setColorAt(i, new T.Color(v * 1.16, v * 0.99, v * 0.56));
       }
       set.mesh.instanceMatrix.needsUpdate = true;
       if (set.mesh.instanceColor) set.mesh.instanceColor.needsUpdate = true;
@@ -391,9 +411,9 @@
      about counting the wires exists. */
   S.buildPoles = function (batch) {
     var town = this.town, h = this.h;
-    var wireMat = this.flat('wire', 0x2c2e2c, 0.85, 0.2);
+    var wireMat = this.flat('wire', 0x56584f, 0.85, 0.1);
     var boxMat = this.flat('meterbox', 0x8e8a7e, 0.7, 0.25);
-    var braMat = this.flat('bracket', 0x4a453e, 0.6, 0.5);
+    var braMat = this.flat('bracket', 0x5e584f, 0.6, 0.12);
     var rng = new ER.RNG('wires');
     var i, j;
 
@@ -440,39 +460,67 @@
      a seven-metre mast would be absurd in an alley two metres wide. */
   S.buildLamps = function (batch) {
     var town = this.town, h = this.h;
-    var lampMat = this.flat('lampIron', 0x3e3a34, 0.55, 0.5);
+    var lampMat = this.flat('lampIron', 0x5c564c, 0.6, 0.12);
     var i;
     for (i = 0; i < town.lamps.length; i++) {
       var lp = town.lamps[i];
-      var lb = h(lp.x, lp.y);
-      /* a little four-sided lantern, hung under the bracket */
-      var hood = G.cyl(0.13, 0.20, 0.10, 4);
-      hood.translate(lp.x, lb + 3.12, lp.y);
+      /* Bracketed off a wall, like every light in the quarter. They used to
+         hang in the middle of the air over the alley on nothing at all. */
+      var face = wallFace(town, lp.x, lp.y, 2.4);
+      var lx = lp.x, lz = lp.y;
+      if (face) {
+        lx = face.x + face.nx * 0.52;
+        lz = face.y + face.ny * 0.52;
+      }
+      var lb = h(lx, lz);
+      var lamY = lb + 3.05;
+      if (face) {
+        /* the arm, and the plate it is bolted through */
+        var armLen = 0.52;
+        var arm = G.box(0.05, 0.05, armLen);
+        arm.rotateY(Math.atan2(face.nx, face.ny));
+        arm.translate((face.x + lx) / 2, lamY + 0.2, (face.y + lz) / 2);
+        batch.add('lampIron', arm, lampMat);
+        var plate = G.box(0.16, 0.16, 0.04);
+        plate.rotateY(Math.atan2(face.nx, face.ny));
+        plate.translate(face.x + face.nx * 0.03, lamY + 0.2, face.y + face.ny * 0.03);
+        batch.add('lampIron', plate, lampMat);
+      }
+      /* a little four-sided lantern, hung under the arm */
+      var hood = G.cyl(0.11, 0.17, 0.09, 4);
+      hood.translate(lx, lamY + 0.2, lz);
       batch.add('lampIron', hood, lampMat);
-      var cage = G.cyl(0.17, 0.13, 0.26, 4);
-      cage.translate(lp.x, lb + 2.86, lp.y);
+      var cage = G.cyl(0.14, 0.11, 0.24, 4);
+      cage.translate(lx, lamY - 0.04, lz);
       batch.add('lampIron', cage, lampMat);
-      this.lamps.push({ def: lp, x: lp.x, y: lb + 2.92, z: lp.y, dying: lp.dying, phase: lp.phase });
+      this.lamps.push({ def: lp, x: lx, y: lamY + 0.02, z: lz, dying: lp.dying, phase: lp.phase });
     }
 
     /* the glowing lenses, instanced so they can flicker independently */
-    var lensGeo = new T.SphereGeometry(0.2, 8, 6, 0, 6.2832, 0, Math.PI * 0.5);
+    var lensGeo = new T.SphereGeometry(0.13, 8, 6, 0, 6.2832, 0, Math.PI * 0.5);
     lensGeo.rotateX(Math.PI);
+    /* Frosted glass, not a hole. At 0x2a2a26 and two thirds of a metre across
+       an unlit lamp read as a black disc hanging over the alley, which is what
+       every one of these screenshots had in the middle of the sky. */
     var lensMat = new T.MeshStandardMaterial({
-      color: 0x2a2a26, roughness: 0.3, metalness: 0.1,
+      color: 0x9d9a90, roughness: 0.42, metalness: 0.05, side: T.DoubleSide,
       emissive: new T.Color(0xffe6ac), emissiveIntensity: 1.0
     });
+    /* The instance colour is the flicker, and it is black all day. Multiplying
+       the emissive straight by it left the glass at rgb(0,0,0): a hole in the
+       air under every lamp, because the bowl faces down and takes no sky. A
+       floor under the flicker keeps it frosted glass when it is off. */
     lensMat.onBeforeCompile = function (shader) {
       shader.fragmentShader = shader.fragmentShader.replace(
         'vec3 totalEmissiveRadiance = emissive;',
-        'vec3 totalEmissiveRadiance = emissive * vColor;'
+        'vec3 totalEmissiveRadiance = emissive * (vColor + vec3(0.2));'
       );
     };
     var lenses = new T.InstancedMesh(lensGeo, lensMat, this.lamps.length);
     var mm = new T.Matrix4();
     for (i = 0; i < this.lamps.length; i++) {
       mm.makeTranslation(this.lamps[i].x, this.lamps[i].y, this.lamps[i].z);
-      mm.scale(new T.Vector3(1.6, 1.0, 1.6));
+      mm.scale(new T.Vector3(1.05, 1.0, 1.05));
       lenses.setMatrixAt(i, mm);
       lenses.setColorAt(i, new T.Color(0, 0, 0));
     }
@@ -547,7 +595,7 @@
      the quay so you do not walk off it in the dark. */
   S.buildFences = function (batch) {
     var town = this.town, h = this.h;
-    var railMat = this.flat('handrail', 0x4a453e, 0.6, 0.5);
+    var railMat = this.flat('handrail', 0x5e584f, 0.6, 0.12);
     var parapet = this.material('sandstone', {});
 
     var daraj = town.roadById.daraj;
@@ -711,33 +759,80 @@
 
   /* ---------------- road signs ---------------- */
 
+  /* The signs here are enamel plates screwed to the corner of a building, and
+     hand-painted boards over a shop door. None of them is on a post: an alley
+     two metres wide has no room for one, and the old ones were nailed up
+     before anybody thought of posts. They were on posts, at head height, in
+     the middle of the paving, with the text mirrored on the back — you walked
+     into DARB EL DARAJ, reversed, on your way down the souk. */
+
+  /* the nearest wall face within reach, and which way it looks */
+  function wallFace(town, x, y, reach) {
+    var best = null;
+    var rects = [];
+    town.lots.forEach(function (l) { rects.push(l.rect); });
+    town.buildings.forEach(function (b) { rects.push(b.rect); });
+    for (var i = 0; i < rects.length; i++) {
+      var r = rects[i];
+      var x0 = r[0], x1 = r[0] + r[2], y0 = r[1], y1 = r[1] + r[3];
+      /* the four faces, each a candidate if the point is beside it */
+      var cand = [
+        { d: y0 - y, x: U.clamp(x, x0, x1), y: y0, nx: 0, ny: -1 },
+        { d: y - y1, x: U.clamp(x, x0, x1), y: y1, nx: 0, ny: 1 },
+        { d: x0 - x, x: x0, y: U.clamp(y, y0, y1), nx: -1, ny: 0 },
+        { d: x - x1, x: x1, y: U.clamp(y, y0, y1), nx: 1, ny: 0 }
+      ];
+      for (var c = 0; c < 4; c++) {
+        var q = cand[c];
+        /* along the face, not past its end, and outside the building */
+        var off = Math.hypot(x - q.x, y - q.y);
+        if (q.d < -0.05 || off > reach) continue;
+        if (!best || off < best.off) best = { x: q.x, y: q.y, nx: q.nx, ny: q.ny, off: off };
+      }
+    }
+    return best;
+  }
+
   S.buildSigns = function (batch) {
     var town = this.town, h = this.h;
-    var postMat = this.flat('signpost', 0x9ba09c, 0.5, 0.65);
+    var braMat = this.flat('signbracket', 0x4f4a42, 0.7, 0.1);
     for (var i = 0; i < town.signs.length; i++) {
       var sg = town.signs[i];
-      var b = h(sg.x, sg.y);
-      var lines = sg.text.split('\n');
-      var isStop = sg.kind === 'stop';
-      var w = isStop ? 0.76 : 0.62, hh = isStop ? 0.76 : 0.24 * lines.length + 0.22;
-      var postH = isStop ? 2.1 : 1.9;
-      var post = G.cyl(0.032, 0.038, postH + hh, 6);
-      post.translate(sg.x, b, sg.y);
-      batch.add('signpost', post, postMat);
+      var shop = sg.kind === 'shop';
+      var w = shop ? 1.15 : 0.62, hh = shop ? 0.34 : 0.22;
+      var tex = G.signTexture(sg.text.split('\n'), {
+        w: 256, h: 128,
+        bg: shop ? '#2f5f72' : '#2c5c3c',
+        fg: '#f2efe4',
+        size: shop ? 62 : 52, border: '#f2efe4', borderW: 6, grunge: true
+      });
 
-      var tex = isStop
-        ? G.signTexture(['STOP'], { w: 256, h: 256, bg: '#9c2f24', fg: '#f2ece2', size: 78, border: '#f2ece2', borderW: 12, grunge: true })
-        : G.signTexture(lines, {
-          w: 256, h: 256, bg: sg.kind === 'warn' ? '#c8a63a' : '#3f5f42',
-          fg: sg.kind === 'warn' ? '#1c1a10' : '#f0efe6',
-          size: Math.floor(190 / lines.length), border: sg.kind === 'warn' ? '#1c1a10' : '#f0efe6',
-          borderW: 8, grunge: true
-        });
-      var mesh = new T.Mesh(new T.PlaneGeometry(w * (isStop ? 1 : 1.6), hh * (isStop ? 1 : 1.6)),
-        new T.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.2, side: T.DoubleSide }));
-      mesh.position.set(sg.x, b + postH, sg.y);
-      mesh.rotation.y = sg.ang || 0;
+      /* screwed flat to the nearest wall, facing out of it */
+      var face = wallFace(town, sg.x, sg.y, 2.4);
+      var px, pz, yaw, lift;
+      if (face) {
+        px = face.x + face.nx * 0.055;
+        pz = face.y + face.ny * 0.055;
+        yaw = Math.atan2(face.nx, face.ny);
+        lift = shop ? 2.62 : 2.92;
+      } else {
+        /* nothing to screw it to: a bracket off the wall it was meant for,
+           kept high enough to walk under */
+        px = sg.x; pz = sg.y;
+        yaw = sg.yaw === undefined ? (sg.ang || 0) : sg.yaw;
+        lift = 3.05;
+        var bra = G.box(0.05, 0.05, 0.36, 1);
+        bra.translate(0, h(px, pz) + lift, 0);
+        batch.add('signbracket', bra, braMat, G.mat4(px, 0, pz, yaw));
+      }
+
+      /* a plate has a back, and the back is not the front read backwards */
+      var mesh = new T.Mesh(new T.PlaneGeometry(w, hh),
+        new T.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.1, side: T.FrontSide }));
+      mesh.position.set(px, h(sg.x, sg.y) + lift, pz);
+      mesh.rotation.y = yaw;
       mesh.castShadow = false;
+      mesh.name = 'alleysign';
       this.root.add(mesh);
     }
   };
@@ -904,9 +999,10 @@
 
     var terra = this.flat('terracotta', 0xa8603f, 0.72, 0.05);
     var tankMat = this.flat('tankblack', 0x2a2b2c, 0.78, 0.05);
-    var dishMat = this.flat('dishwhite', 0xd9d6cc, 0.6, 0.12);
+    /* a dish is a bowl, and you see the back of most of them: two-sided */
+    var dishMat = this.flat('dishwhite', 0xd9d6cc, 0.6, 0.12, { side: T.DoubleSide });
     var brass2 = this.flat('brass2', 0x9a7c42, 0.42, 0.72);
-    var iron2 = this.flat('iron2', 0x42403a, 0.6, 0.5);
+    var iron2 = this.flat('iron2', 0x5a554c, 0.6, 0.12);
     var blue = this.flat('boatblue', 0x2f6f8f, 0.52, 0.1);
     var netMat = this.flat('net', 0x6d7a5e, 0.8, 0.05);
 
@@ -931,7 +1027,9 @@
     town.lots.forEach(function (l) {
       if (!P['tank_' + l.id]) return;
       var cx = l.rect[0] + l.rect[2] * 0.5, cz = l.rect[1] + l.rect[3] * 0.65;
-      var base = h(cx, cz) + 0.34 + 3.1 * (l.storeys || 1) + 0.1;
+      /* on the roof slab, not floating above it: same 3.1 m storey that
+         nothing else in the renderer uses */
+      var base = h(cx, cz) + 0.22 + 2.62 * (l.storeys || 1) + 0.18;
       var t2 = G.cyl(0.45, 0.45, 0.8, 10);
       t2.translate(cx, base, cz);
       batch.add('tankblack', t2, tankMat);
@@ -940,11 +1038,21 @@
       batch.add('tankblack', cap, tankMat);
     });
 
-    /* --- satellite dishes, all pointing the same way, as the errand says --- */
+    /* --- satellite dishes, all pointing the same way, as the errand says.
+           They used to be worked out from a storey height of 3.1 m, which no
+           part of this renderer uses, so every one of them hung half a metre
+           clear of its own roof: eighteen white frisbees over the quarter,
+           dark side out, and from the alley you saw the inside of the bowl
+           through its own back. --- */
     town.lots.forEach(function (l) {
       if (!P['dish_' + l.id]) return;
       var cx = l.rect[0] + l.rect[2] * 0.74, cz = l.rect[1] + l.rect[3] * 0.24;
-      var base = h(cx, cz) + 0.34 + 3.1 * (l.storeys || 1) - 0.45;
+      var roof = h(cx, cz) + 0.22 + 2.62 * (l.storeys || 1) + 0.18;
+      /* the pole it is clamped to, which is what holds it up */
+      var mast = G.cyl(0.028, 0.032, 0.62, 6);
+      mast.translate(cx, roof, cz);
+      batch.add('dishwhite', mast, dishMat);
+      var base = roof + 0.68;
       var d2 = new T.SphereGeometry(0.34, 10, 6, 0, 6.2832, 0, 0.62);
       d2.rotateX(-1.05);
       d2.translate(cx, base, cz);

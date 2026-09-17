@@ -15,6 +15,9 @@
   var U = ER.U;
   var N = ER.Names || {};
 
+  /* the renderer's storey height, so the roof props agree with the roofs */
+  var STOREY = 2.62;
+
   var W = 50, H = 50;          /* metres. the whole world. */
   var CELL = 0.35;             /* collision grid. alleys are 1.7 m wide. */
 
@@ -183,6 +186,108 @@
     ];
   }
 
+  /* ------------------------------------------------------------------ *
+   *  keeping the alleys walkable
+   * ------------------------------------------------------------------ */
+
+  /* The footprints above are hand-laid, and a hand drops things by a metre.
+     Sixteen of the twenty-eight sat a metre or so inside the corridor they
+     front onto, which in an alley 2.2 m wide means you walk down it with a
+     wall in your face. Rather than nudge twenty-eight numbers and have the
+     next edit undo it, push each footprint out of every corridor it intrudes
+     into, along whichever axis it is shallowest on, so the frontage ends up
+     flush with the edge of the paving instead of standing in it. */
+  /* Every rect in this file is [left, top, width, height] — the corner, not
+     the centre. Get that wrong and the house you see stands half a house
+     away from the wall you walk into. */
+  function clearCorridors(defs, alleys) {
+    var CLEAR = 0.16;                    /* the gutter between paving and wall */
+    var GAP = 0.25;                      /* party walls, but not shared bricks */
+    var FN = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] };
+    var dirs = {};                       /* fixed up front, or they oscillate */
+
+    function cx(r) { return r[0] + r[2] / 2; }
+    function cy(r) { return r[1] + r[3] / 2; }
+
+    function dirFor(def, di, a, ai) {
+      var key = di + '/' + ai;
+      if (dirs[key]) return dirs[key];
+      var d = null;
+      var n = polyNearest(a.pts, cx(def.rect), cy(def.rect));
+      if (a.id === def.road && FN[def.face]) {
+        /* The door faces this alley, so the body of the house is behind it —
+           but only if the door faces across the alley and not along it. The
+           chapel stands at the head of the quay with its door to the south,
+           and the quay runs south, so following the door there would have
+           walked it off the end of the island. */
+        var p0 = a.pts[n.seg], p1 = a.pts[n.seg + 1];
+        var tl = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+        var tx = (p1[0] - p0[0]) / tl, ty = (p1[1] - p0[1]) / tl;
+        var fn = FN[def.face];
+        if (Math.abs(fn[0] * tx + fn[1] * ty) < 0.5) d = [-fn[0], -fn[1]];
+      }
+      if (!d) {
+        var vx = cx(def.rect) - n.x, vy = cy(def.rect) - n.y;
+        d = Math.abs(vx) >= Math.abs(vy) ? [vx > 0 ? 1 : -1, 0] : [0, vy > 0 ? 1 : -1];
+      }
+      dirs[key] = d;
+      return d;
+    }
+
+    /* how far the footprint reaches inside the corridor, at its worst */
+    function intrusion(r, a) {
+      var half = a.width / 2 + (a.shoulder || 0) * 0.5 + CLEAR;
+      var worst = 0;
+      for (var i = 0; i <= 6; i++) {
+        for (var j = 0; j <= 6; j++) {
+          var into = half - polyNearest(a.pts, r[0] + r[2] * i / 6, r[1] + r[3] * j / 6).d;
+          if (into > worst) worst = into;
+        }
+      }
+      return worst;
+    }
+
+    for (var pass = 0; pass < 240; pass++) {
+      var moved = false;
+      /* out of the alleys */
+      for (var di = 0; di < defs.length; di++) {
+        for (var ai = 0; ai < alleys.length; ai++) {
+          var into = intrusion(defs[di].rect, alleys[ai]);
+          if (into <= 0.01) continue;
+          var d = dirFor(defs[di], di, alleys[ai], ai);
+          var step = Math.min(into, 0.1);   /* small steps; the corridor bends */
+          defs[di].rect[0] += d[0] * step;
+          defs[di].rect[1] += d[1] * step;
+          moved = true;
+        }
+      }
+      /* and off each other. shoving one out of an alley can shove it into
+         its neighbour, so both constraints have to relax together */
+      for (var i2 = 0; i2 < defs.length; i2++) {
+        for (var j2 = i2 + 1; j2 < defs.length; j2++) {
+          var a2 = defs[i2].rect, b2 = defs[j2].rect;
+          var ox = (a2[2] + b2[2]) / 2 + GAP - Math.abs(cx(a2) - cx(b2));
+          var oy = (a2[3] + b2[3]) / 2 + GAP - Math.abs(cy(a2) - cy(b2));
+          if (ox <= 0.01 || oy <= 0.01) continue;
+          /* part them along whichever axis they are least tangled on */
+          var sx = cx(a2) >= cx(b2) ? 1 : -1, sy = cy(a2) >= cy(b2) ? 1 : -1;
+          var amt = Math.min(ox < oy ? ox : oy, 0.1) / 2;
+          if (ox < oy) { a2[0] += sx * amt; b2[0] -= sx * amt; }
+          else { a2[1] += sy * amt; b2[1] -= sy * amt; }
+          moved = true;
+        }
+      }
+      /* keep them on the island while they settle, not just at the end */
+      for (var k = 0; k < defs.length; k++) {
+        var q = defs[k].rect;
+        q[0] = U.clamp(q[0], 0.6, W - q[2] - 0.6);
+        q[1] = U.clamp(q[1], 0.6, H - q[3] - 0.6);
+      }
+      if (!moved) break;
+    }
+    return defs;
+  }
+
   /* the fountain square, and the other places somebody bothered to pave */
   function pavingDefs() {
     return [
@@ -233,7 +338,12 @@
     return { x: x + w + out, y: y + h * 0.5 };
   }
 
+  /* Both names, because game.js has always asked for ER.SearchPools and this
+     file has always published ER.SEARCH_POOLS. Nothing noticed until an
+     errand sent the player to go through the cracks in the paving: the first
+     search threw on ER.SearchPools being undefined. */
   ER.SEARCH_POOLS = SEARCH_POOLS;
+  ER.SearchPools = SEARCH_POOLS;
 
   /* Somewhere you can actually stand: walk outward from the wall until the
      collision grid lets go. Fifty metres of alley leaves no slack for a prop
@@ -595,12 +705,16 @@
       }
       if (l.features.tank) {
         p({ id: 'tank_' + l.id, name: 'the water tank on the roof of number ' + l.number,
-          x: st.x, y: st.y, r: 1.3, verbs: ['LOOK'], photo: true, up: 7.0,
+          x: st.x, y: st.y, r: 1.3, verbs: ['LOOK'], photo: true,
+          /* on this house's own roof. A flat 7 m put the one-storey houses'
+             tanks four metres above their own roofs */
+          up: 0.4 + STOREY * l.storeys + 0.58,
           where: alley, lot: l.id, tags: ['tank', 'roof', 'black'] });
       }
       if (l.features.dish) {
         p({ id: 'dish_' + l.id, name: 'the dish on number ' + l.number,
-          x: st.x, y: st.y, r: 1.3, verbs: ['LOOK'], photo: true, up: 6.4,
+          x: st.x, y: st.y, r: 1.3, verbs: ['LOOK'], photo: true,
+          up: 0.4 + STOREY * l.storeys + 1.06,
           where: alley, lot: l.id, tags: ['dish', 'satellite'] });
       }
       if (l.features.bougain) {
@@ -948,9 +1062,14 @@
     town.sea = seaDef();
     town.paving = pavingDefs();
     town.pavedStrips = [];                 /* nothing here is a poured strip */
+    town.apron = 9.6;                      /* east of this the quarter is paved */
     town.square = { x: 30.6, y: 27.2, w: 7.0, h: 5.8, fountain: { x: 34.1, y: 30.1, r: 0.95 } };
 
-    town.buildings = buildingDefs().map(function (b) {
+    /* one list, so a house and a shop cannot be pushed onto each other */
+    var hDefs = houseDefs(), bDefs = buildingDefs();
+    clearCorridors(hDefs.concat(bDefs), town.roads);
+
+    town.buildings = bDefs.map(function (b) {
       var br = rng.sub('bld' + b.id);
       b.x = b.rect[0]; b.y = b.rect[1]; b.w = b.rect[2]; b.h = b.rect[3];
       b.storeys = b.storeys || 1;
@@ -968,7 +1087,7 @@
     town.buildings.forEach(function (b) { town.buildingById[b.id] = b; });
 
     /* the houses, dressed procedurally from a hand-laid footprint */
-    town.lots = houseDefs().map(function (d, i) {
+    town.lots = hDefs.map(function (d, i) {
       var lr = rng.sub('house' + d.id);
       var door = facePoint(d.rect, d.face, 0.05);
       var stand = facePoint(d.rect, d.face, 1.35);
@@ -1038,6 +1157,12 @@
       for (k = 0; k < town.paving.length; k++) {
         if (U.pointInRect(x, y, town.paving[k])) return town.paving[k].kind;
       }
+      /* Inland of the quay the quarter is paved wall to wall. There is no
+         ground between these houses that is not somebody's step, somebody's
+         corner or the stone in between — which is why the alleys read as
+         alleys and not as tracks across a field. Seaward of the apron is the
+         bare shelf and the shore, and that is where anything grows. */
+      if (x >= town.apron) return 'stone';
       return 'rock';
     };
 

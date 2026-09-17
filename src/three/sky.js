@@ -18,10 +18,10 @@
     { e:  -4, zen: 0x27395c, hor: 0x8a5250, sun: 0x8c4a34, sunI: 0.30, amb: 0x4d5f84, ambI: 0.56,  fog: 0x5c5560, haze: 0.70 },
     { e:  -1, zen: 0x3a5480, hor: 0xc9764c, sun: 0xd2643a, sunI: 0.85, amb: 0x66789c, ambI: 0.72,  fog: 0x94765f, haze: 0.92 },
     { e:   3, zen: 0x42679b, hor: 0xe3a06a, sun: 0xffa057, sunI: 1.75, amb: 0x7c8fb2, ambI: 0.82,  fog: 0xb99678, haze: 1.00 },
-    { e:   9, zen: 0x466fa8, hor: 0xe8c39a, sun: 0xffd39a, sunI: 2.45, amb: 0x8b9cba, ambI: 0.88,  fog: 0xc8b49a, haze: 0.82 },
-    { e:  18, zen: 0x3f6fae, hor: 0xc3d2dd, sun: 0xfff0d6, sunI: 3.05, amb: 0x8fa4bf, ambI: 0.92,  fog: 0xbfcbd4, haze: 0.62 },
-    { e:  34, zen: 0x38699f, hor: 0xb3c7d6, sun: 0xfff7e9, sunI: 3.45, amb: 0x93a9c4, ambI: 0.98,  fog: 0xb4c4d0, haze: 0.50 },
-    { e:  60, zen: 0x2f6096, hor: 0xa8c0d2, sun: 0xfffbf4, sunI: 3.60, amb: 0x96adc8, ambI: 1.02, fog: 0xadbecb, haze: 0.44 }
+    { e:   9, zen: 0x527fbc, hor: 0xecceab, sun: 0xffd39a, sunI: 2.45, amb: 0x95a8c6, ambI: 1.05,  fog: 0xc8b49a, haze: 0.82 },
+    { e:  18, zen: 0x4e83c4, hor: 0xd2dfe8, sun: 0xfff0d6, sunI: 3.05, amb: 0x9db2cd, ambI: 1.18,  fog: 0xbfcbd4, haze: 0.62 },
+    { e:  34, zen: 0x487fbe, hor: 0xc6d7e3, sun: 0xfff7e9, sunI: 3.45, amb: 0xa1b7d1, ambI: 1.28,  fog: 0xb4c4d0, haze: 0.50 },
+    { e:  60, zen: 0x3d78b8, hor: 0xbdd2e0, sun: 0xfffbf4, sunI: 3.60, amb: 0xa5bad4, ambI: 1.35, fog: 0xadbecb, haze: 0.44 }
   ];
 
   function lerpHex(a, b, t) {
