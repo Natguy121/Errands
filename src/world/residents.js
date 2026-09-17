@@ -1,7 +1,7 @@
 /* Errands — the thirty.
  *
  * They have jobs and routines and they walk on the roads. They are not
- * quest-givers; nobody in Hollis Bend has ever given anybody an errand.
+ * quest-givers; nobody in the quarter has ever given anybody an errand.
  * What they do is see you. Over and over, in a place too small to hide in.
  */
 (function (ER) {

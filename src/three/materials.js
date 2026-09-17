@@ -1,4 +1,4 @@
-/* Errands — every surface in Hollis Bend, generated at load.
+/* Errands — every surface in the quarter, generated at load.
    There are no texture files. Each material gets an albedo, a normal map
    derived from its own height field, and a roughness map, so that light
    actually catches on things. */
@@ -289,6 +289,119 @@
       var a = canvas();
       a.getContext('2d').drawImage(h, 0, 0);
       return { albedo: a, height: h, rough: [0.45, 0.72], normalStrength: 1.2, white: true };
+    },
+
+    /* Lime render over sandstone block, which is what almost every wall in
+       the quarter is. Greyscale, so each house tints it with its own wash. */
+    limewash: function () {
+      var h = canvas(); var hc = h.getContext('2d');
+      noiseFill(hc, SIZE, 6, 'washH', 0.62, 0.92, 4);
+      var rng = new ER.RNG('limewash');
+      /* the block courses showing faintly through the render */
+      var course = SIZE / 5;
+      hc.globalAlpha = 0.20;
+      for (var r = 0; r < 5; r++) {
+        hc.fillStyle = '#5a5a5a';
+        hc.fillRect(0, r * course, SIZE, 1.4);
+        var off = (r % 2) * course * 0.5;
+        for (var b = 0; b < 3; b++) {
+          hc.fillRect(off + b * (SIZE / 3), r * course, 1.2, course);
+        }
+      }
+      hc.globalAlpha = 1;
+      /* and the patches where it has come off back to the stone */
+      for (var k = 0; k < 26; k++) {
+        var px = rng.float(0, SIZE), py = rng.float(0, SIZE), pr = rng.float(4, 22);
+        var g2 = hc.createRadialGradient(px, py, 0, px, py, pr);
+        g2.addColorStop(0, 'rgba(90,90,90,' + rng.float(0.22, 0.5) + ')');
+        g2.addColorStop(1, 'rgba(90,90,90,0)');
+        hc.fillStyle = g2;
+        hc.beginPath(); hc.ellipse(px, py, pr, pr * rng.float(0.5, 1), rng.float(0, 3), 0, 6.2832); hc.fill();
+      }
+      /* rain staining, always downward */
+      for (var d2 = 0; d2 < 34; d2++) {
+        hc.fillStyle = 'rgba(70,70,70,' + rng.float(0.03, 0.10) + ')';
+        hc.fillRect(rng.float(0, SIZE), rng.float(0, SIZE * 0.6), rng.float(1, 4), rng.float(20, 90));
+      }
+      var a = canvas();
+      a.getContext('2d').drawImage(h, 0, 0);
+      return { albedo: a, height: h, rough: [0.62, 0.88], normalStrength: 1.0, white: true };
+    },
+
+    /* bare ramleh block, for plinths, the sea wall and anything unrendered */
+    sandstone: function () {
+      var h = canvas(); var hc = h.getContext('2d');
+      noiseFill(hc, SIZE, 20, 'sandH', 0.48, 0.86, 4);
+      var rng = new ER.RNG('sandstone');
+      /* coursed, with the joints raked out */
+      var course = SIZE / 4;
+      for (var r = 0; r < 4; r++) {
+        hc.fillStyle = 'rgba(40,36,30,0.55)';
+        hc.fillRect(0, r * course, SIZE, 2.6);
+        var off = (r % 2) * course * 0.6;
+        for (var b = 0; b < 3; b++) {
+          hc.fillRect((off + b * (SIZE / 3)) % SIZE, r * course, 2.2, course);
+        }
+      }
+      /* the bedding lines the stone was cut along */
+      for (var k = 0; k < 90; k++) {
+        hc.fillStyle = 'rgba(255,255,255,' + rng.float(0.03, 0.10) + ')';
+        hc.fillRect(rng.float(0, SIZE), rng.float(0, SIZE), rng.float(8, 40), rng.float(0.6, 1.6));
+      }
+      var a = canvas(); var ac = a.getContext('2d');
+      ac.drawImage(h, 0, 0);
+      var img = ac.getImageData(0, 0, SIZE, SIZE), d = img.data;
+      for (var q = 0; q < d.length; q += 4) {
+        var v = d[q] / 255;
+        d[q] = U.lerp(132, 214, v);
+        d[q + 1] = U.lerp(118, 196, v);
+        d[q + 2] = U.lerp(96, 163, v);
+      }
+      ac.putImageData(img, 0, 0);
+      return { albedo: a, height: h, rough: [0.66, 0.9], normalStrength: 1.5 };
+    },
+
+    /* terracotta roof tile, half-round, in rows down the pitch */
+    tile: function () {
+      var h = canvas(); var hc = h.getContext('2d');
+      hc.fillStyle = '#6a6a6a'; hc.fillRect(0, 0, SIZE, SIZE);
+      var rng = new ER.RNG('rooftile');
+      var cols = 7, colW = SIZE / cols;
+      for (var c2 = 0; c2 < cols; c2++) {
+        var x0 = c2 * colW;
+        var grd = hc.createLinearGradient(x0, 0, x0 + colW, 0);
+        grd.addColorStop(0, '#4c4c4c');
+        grd.addColorStop(0.32, '#e2e2e2');
+        grd.addColorStop(0.62, '#b4b4b4');
+        grd.addColorStop(1, '#565656');
+        hc.fillStyle = grd;
+        hc.fillRect(x0, 0, colW, SIZE);
+      }
+      /* the laps down each run */
+      var rows = 6, rowH = SIZE / rows;
+      for (var r2 = 0; r2 < rows; r2++) {
+        hc.fillStyle = 'rgba(30,30,30,0.45)';
+        hc.fillRect(0, r2 * rowH, SIZE, 2.2);
+        hc.fillStyle = 'rgba(255,255,255,0.10)';
+        hc.fillRect(0, r2 * rowH + 2.2, SIZE, 2.0);
+      }
+      /* lichen, which every roof in the quarter has */
+      for (var k2 = 0; k2 < 40; k2++) {
+        hc.fillStyle = 'rgba(200,205,180,' + rng.float(0.05, 0.16) + ')';
+        var lx = rng.float(0, SIZE), ly = rng.float(0, SIZE), lr = rng.float(2, 9);
+        hc.beginPath(); hc.ellipse(lx, ly, lr, lr * 0.7, 0, 0, 6.2832); hc.fill();
+      }
+      var a2 = canvas(); var ac2 = a2.getContext('2d');
+      ac2.drawImage(h, 0, 0);
+      var img2 = ac2.getImageData(0, 0, SIZE, SIZE), d3 = img2.data;
+      for (var q2 = 0; q2 < d3.length; q2 += 4) {
+        var v2 = d3[q2] / 255;
+        d3[q2] = U.lerp(96, 206, v2);
+        d3[q2 + 1] = U.lerp(52, 118, v2);
+        d3[q2 + 2] = U.lerp(38, 84, v2);
+      }
+      ac2.putImageData(img2, 0, 0);
+      return { albedo: a2, height: h, rough: [0.58, 0.86], normalStrength: 1.7 };
     },
 
     shingle: function () {

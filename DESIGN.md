@@ -2,40 +2,67 @@
 
 ## The pitch
 
-A realistic first-person open world, four square kilometres, thirty residents,
+A realistic first-person open world, fifty metres square, thirty residents,
 in which the entire gameplay loop is randomly generated, absurdly specific
 side quests and nothing else.
 
-## Setting: Hollis Bend
+## Setting: Batroun, the old quarter
 
-Not abandoned, not dying, not post-anything. A small modern American town that
-works. This is load-bearing — the humour and the unease both come from the
-juxtaposition, and a ruin would dissolve them. So the town has:
+Not abandoned, not dying, not post-anything. One block of a working Lebanese
+coastal town. This is load-bearing — the humour and the unease both come from
+the juxtaposition, and a ruin would dissolve them. So the quarter has:
 
-- asphalt with painted centre lines, crowned so water runs off, and graded
-  gravel shoulders
-- a gas station that sells you a jar and prints a receipt whether you want one
-  or not, a diner open for breakfast all day, a hardware store with a ledger
-  nobody needs, a 24-hour laundromat, a post office, a town hall that is also
-  the volunteer fire department
-- thirty maintained houses with satellite dishes still pointed where the
-  installer left them, cars in driveways, tilled garden rows, trampolines,
-  clotheslines, propane tanks, condensers that run all night in August
-- a house going up on Elm Court, lot 4 sold, scrap pile out front
-- streetlamps that come on at dusk, one of which is dying
-- and, at the edges: an abandoned farmhouse, a rail grade whose trestle came
-  out in the eighties, a shuttered feed store with a cracked lot
+- stone alleys between 1.7 and 3.4 m wide, worn smooth down the middle, and
+  Darb el Daraj, which is stairs
+- a furn open at half five, Abou Georges' lemonade stand with the pips left
+  in, a soap shop whose pyramid is rebuilt every Monday, a qahwe open until
+  eleven with plastic chairs on the paving and a backgammon game nobody has
+  finished, a barber under a pole that does not turn, and a dukkan that prints
+  a receipt whether you want one or not
+- eighteen maintained houses: sandstone under lime render, painted shutters,
+  tile roofs, triple-arched windows, geraniums in pots by the door,
+  bougainvillea over the arch, laundry across the alley, a black water tank
+  and a satellite dish on nearly every roof, and the meter boxes and
+  thrown-across wiring that feed them
+- the quarter's own diesel generator, and a man who comes round for the money
+- alley lanterns on wall brackets that come on at dusk, two of which are dying
+- and, at the edges: one house on the zaroub with the roof down in a single
+  room, and the sea
 
 The things that are ruined are ruined for ordinary reasons and are outnumbered
 by the things that work.
 
+### Fifty metres
+
+The scale is the joke, and it cuts harder than four square kilometres did. In a
+township you could at least be strange somewhere nobody was looking. Here
+every errand is ninety seconds from every other one, so you return to the same
+fountain eleven times in a day for eleven unrelated reasons, watched by the
+same thirty people from balconies two metres above your head. A place too small
+to hide it, literally.
+
+It also changes the engineering. Fifty metres does not leave room for a
+procedural street grid to be subtly wrong in — a house half a metre out blocks
+an alley outright — so the alleys and the footprints are hand-laid and then
+checked by `validateLayout()`, which the headless tests run: no two buildings
+overlapping, nothing standing in an alley. It found twenty-three faults the
+first time it ran. Trees are the opposite: hand-picking positions lost five out
+of ten to the alley filter, so the generator sweeps the free ground and places
+them where there is actually room.
+
 ### Topography
 
-The land is not flat. The cemetery is on a rise, which is *why* it is there.
-The cell tower and the repeater shed are on the ridge. Little Fox Creek has cut
-itself down three metres through all of it. Roads are graded flat out to 26 m
-either side of their centreline — which is what a road grader actually does —
-so the asphalt is level under your feet even where the ground rolls.
+The land is not flat. The quarter is built on a rock shelf that climbs away
+from the water — 1.1 m at the wall to 7.8 m at the top corner — and the shelf
+goes under the sea two metres west of the Phoenician wall, whose crest stands
+proud of the quay and can be walked on.
+
+Alleys are graded flat out to 2.6 m either side of their centreline, which at
+this scale is the whole alley and a bit of the wall. Darb el Daraj is graded
+differently: its on-alley height quantises to a 0.17 m riser, so the ground
+itself is stepped and you climb it a tread at a time. Nosings are laid on top
+wherever the height changes, which is what makes it read as a stair rather
+than a ramp.
 
 ## The loop
 
@@ -52,21 +79,22 @@ different line.
 
 ## Errand design
 
-Sixty templates. Each is a small factory: it rolls its own parameters against
-the generated town, writes its own title and fine print from them, and emits an
-ordered list of steps. So the pool is not sixty errands, it is sixty *kinds*
-of errand with thousands of instances.
+Seventy templates. Each is a small factory: it rolls its own parameters
+against the generated quarter, writes its own title and fine print from them,
+and emits an ordered list of steps. So the pool is not seventy errands, it is
+seventy *kinds* of errand with thousands of instances.
 
 A template looks like this:
 
 ```js
 {
-  id: 'jar_of_creek_water', weight: 3, tags: ['water', 'fiddly'],
+  id: 'jar_of_sea_water', weight: 3, tags: ['water', 'fiddly'],
   setup: rng => ({ knots: rng.int(2, 4) }),
-  title: () => 'Collect exactly one glass jar of water from the shallow bend
-                beneath the concrete bridge, seal it, and wrap twine around the rim',
-  fine: p => 'It must be the shallow bend. The deep bend is wrong. ' +
-             spell(p.knots) + ' turns of twine, no more.',
+  title: () => 'Collect exactly one glass jar of sea water from the shallow
+                channel cut through the Phoenician wall, seal it, and wrap
+                twine around the rim',
+  fine: p => 'It must be the shallow channel. The deep one further along is ' +
+             'wrong. ' + spell(p.knots) + ' turns of twine, no more.',
   steps: p => [ buy(...), buy(...), act(...), make(...), make(...) ]
 }
 ```
@@ -102,8 +130,10 @@ twenty-two times faster, which is the closest the game comes to a fast-travel.
 
 Three places exist purely so the fine print can be *wrong about something*:
 
-- the **deep bend** as well as the shallow one, downstream on the same creek
-- the **mint behind the diner** as well as the mint behind the church
+- the **deep channel** in the sea wall as well as the shallow one
+- the **basil in the other tin** by the chapel door, next to the mint
+- the **younger fig** by the shrine, next to the oldest one
+- the **three steps at the bottom** of Darb el Daraj, which are the kerb
 - a **storm drain that does not echo**
 
 Going to the wrong one gives you a refusal, not a failure: *"This is the deep
@@ -120,32 +150,36 @@ The journal counts what you have turned up. Nothing uses the count.
 
 ## The thirty
 
-The residents are not quest-givers. Nobody in Hollis Bend has ever given
+The residents are not quest-givers. Nobody in the quarter has ever given
 anybody an errand. What they do is *see you*.
 
-Each has a name, an age, a job, a house and a daily route, and walks the road
-graph between them on a schedule that differs on weekends. Some drive out of
-town to work and are simply absent for the day.
+Each has a name, an age, work, a house and a daily route, and walks the alley
+graph between them on a schedule that differs at the weekend, when there is
+mass at nine. Two commute up the coast and are simply absent for the day.
+Thirty people across eighteen houses means most doors have two names behind
+them and families share a surname.
 
 Their dialogue is tiered by how many errands you have completed and how much
 of it they have personally witnessed:
 
 | tier | register | example |
 |---|---|---|
-| 0 | neighbourly | "Trash is Thursday. They come early, so put it out Wednesday." |
+| 0 | neighbourly | "The water comes on at six. Fill something before then." |
 | 1 | noticing | "Third time I've seen you today. Not counting this." |
-| 2 | puzzled | "Somebody said you were up at the cemetery. In the dark." |
+| 2 | puzzled | "Somebody said you were out on the wall. In the dark." |
 | 3 | concerned | "Listen. Is somebody making you do this?" |
-| 4 | complicit | "Jars are on aisle two. I ordered more in for you." |
+| 4 | complicit | "Jars are on the shelf above the olives. I got more in for you." |
 
 Twenty-two job-specific line sets sit on top of a generic pool, plus
 contextual overrides that fire when the situation is too obvious to ignore —
 if you are carrying two jars in the rain at eleven at night, somebody will
 mention it.
 
-Some errand steps are flagged `witnessed`. Reading the entire post office
-bulletin board aloud is one. Doing those in front of people accelerates their
-tier and earns a toast: *"Three people saw you do that."*
+Some errand steps are flagged `witnessed`. Saying one word into the channel in
+the sea wall is one; turning exactly one of the qahwe's chairs to face the wall
+is another. Doing those in front of people accelerates their tier and earns a
+toast: *"Three people saw you do that."* In an alley two metres wide this is
+not hard to arrange.
 
 ### Milestones
 
@@ -153,10 +187,10 @@ At 10, 25, 50, 100 and 200 errands the town adjusts, quietly and without
 resolving anything:
 
 - a clean pint jar appears on your porch, no note
-- the diner decides you have a usual, without asking what it is
+- the qahwe decides you have a usual, without asking what it is
 - a rusted nail and a flattened cap turn up on the step in a margarine tub
 - Dale stops charging you. For jars. Only for jars.
-- *"Hollis Bend has adjusted around you. Nobody remembers it being otherwise."*
+- *"The quarter has adjusted around you. Nobody remembers it being otherwise."*
 
 ## Rendering approach
 
@@ -191,7 +225,7 @@ horizon at its own sunset and then handed over to a separate night curve twelve
 minutes later, jumping two degrees in an instant. Twilight came out at
 thirty-five minutes instead of ninety and skipped the warm part altogether, so
 7:24 PM -- labelled "Dusk" in the corner of the screen, and the hour a good
-many errands send you to the cemetery -- rendered as deep night. The clock owns
+many errands send you out to the sea wall -- rendered as deep night. The clock owns
 the model now, because the sky and the errand gates keying off dusk must not
 be able to disagree about where the sun is.
 
@@ -202,13 +236,13 @@ faint galactic band, and a moon. The same ten stops hand out the directional
 light colour and intensity, the hemisphere ambient, and the fog colour — so the
 scene is lit by the sky rather than beside it.
 
-**Geometry.** Roads, shoulders, creek banks and the rail grade are ribbons
+**Geometry.** Alleys, their unswept edges and the courses of the sea wall are ribbons
 extruded along their polylines, sampling the terrain height at every step, so
 nothing floats and nothing sinks. Houses are assembled from a shared kit:
 foundation, walls, gable roof with a real overhang, fascia, half-round gutters
 with one downspout, porch deck and posts, recessed window frames with sills,
 a door with a knob, a brick chimney. Everything sharing a material is merged
-into one buffer at build time — thirty-one houses come to a handful of draw
+into one buffer at build time — eighteen houses come to a handful of draw
 calls rather than nine hundred.
 
 **Instancing.** Trees (trunks, displaced-icosphere canopies, stacked cones for
@@ -223,8 +257,9 @@ you move more than nine, shrinking away over the outer half of that radius
 rather than stopping at a line. A slice of 2200 goes down per frame so the
 sweep never lands in one hitch, and they are rejected off roads, shoulders,
 paving and buildings by the same terrain query the collision uses. Another
-1800 tall weeds go in only where nobody mows -- field and ballast -- so lawns
-stay lawns.
+500 taller weeds go in only on the bare shelf, because the alleys are swept
+and the square is flagged. There are no lawns here at all: the tuft count came
+down from six thousand to nine hundred when the world became stone.
 
 The counts came down from nine thousand and 2600 after near-field
 alpha-tested cards each doing a shadow-map lookup pegged the GPU process for
@@ -337,7 +372,7 @@ sheet of paper, a spoon with moss in it — and they lean in while you hold `E`.
 connectivity of the resident walk graph, a standable position adjacent to every
 one of the 215 interactables, and static validation that every step in every
 template refers only to props, items and verbs that exist — checked across
-eight parameter rolls per template. Then a solver drives all sixty templates
+six parameter rolls per template. Then a solver drives all seventy templates
 to completion, bending the clock and the weather as each step demands, which
 means no template can ship unfinishable.
 

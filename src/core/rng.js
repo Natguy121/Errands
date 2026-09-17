@@ -1,5 +1,5 @@
 /* Errands — deterministic randomness.
-   Everything in Hollis Bend is generated from one seed, so the town is the
+   Everything in the quarter is generated from one seed, so the place is the
    same town every time you load it, and the errands are not. */
 (function (ER) {
   'use strict';

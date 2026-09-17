@@ -191,16 +191,18 @@
     /* the lights the sky implies */
     this.sun = new T.DirectionalLight(0xfff0d6, 3.0);
     this.sun.castShadow = true;
-    /* 1024 across a 92 m shadow camera is about eleven texels per metre,
-       which is plenty for a town, at a quarter of the rasterisation */
+    /* The whole world is fifty metres across, so one shadow camera covers all
+       of it with room to spare: 1024 across 56 m is about eighteen texels per
+       metre, roughly twice the density the township got, which is what an
+       alley two metres wide needs to cast a readable shadow. */
     this.sun.shadow.mapSize.set(1024, 1024);
     this.sun.shadow.camera.near = 0.5;
-    this.sun.shadow.camera.far = 210;
+    this.sun.shadow.camera.far = 140;
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.035;
     var sc = this.sun.shadow.camera;
     /* tight around the player: crisper shadows and far less to rasterise */
-    sc.left = -46; sc.right = 46; sc.top = 46; sc.bottom = -46;
+    sc.left = -28; sc.right = 28; sc.top = 28; sc.bottom = -28;
     scene.add(this.sun);
     scene.add(this.sun.target);
 

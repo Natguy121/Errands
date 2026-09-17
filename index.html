@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Errands — Hollis Bend, pop. 30</title>
+<title>Errands — Batroun, the old quarter</title>
 <!-- an empty data URI, so the browser stops asking for /favicon.ico and
      404ing in the console. There are no asset files in this repository. -->
 <link rel="icon" href="data:,">
@@ -285,11 +285,11 @@
 <canvas id="stage"></canvas>
 
 <div id="boot">
-  <div class="kicker">HOLLIS BEND &middot; POP. 30 &middot; 4.0 KM&sup2;</div>
+  <div class="kicker">BATROUN &middot; EL QADIM &middot; POP. 30 &middot; 50 &times; 50 M</div>
   <h1>Errands</h1>
   <p class="sub">
-    You have taken the old Latham place on Depot Street, month to month.
-    Nobody sent for you and there is nothing here.
+    You have the back room of number 6, off the souk, month to month.
+    Nobody sent for you and there is nothing here to do.
     <em>The quest log fills itself.</em>
   </p>
   <div class="row">
@@ -375,7 +375,7 @@
     loading.hidden = false;
     if (startFresh) ER.Save.clear();
 
-    game = new ER.Game(cv, 'hollis bend');
+    game = new ER.Game(cv, 'batroun');
     window.game = game;
     game.view.resize();
 

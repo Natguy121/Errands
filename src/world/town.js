@@ -840,6 +840,93 @@
     return problems;
   }
 
+
+  /* ------------------------------------------------------------------ *
+   *  scenery: the trees there is room for, the lamps on the walls, and
+   *  the enamel signs somebody screwed up at the corners.
+   * ------------------------------------------------------------------ */
+
+  function buildScenery(town, rng) {
+    /* Trees go where there is actually room, found rather than guessed. At
+       fifty metres a hand-picked position is nearly always half a metre inside
+       an alley -- the first attempt lost five trees out of ten to the filter,
+       which is the wrong way round. So: sweep the free ground, keep what is
+       clear of the alleys and of the other trees, and let the quarter have the
+       trees it has space for. */
+    (function () {
+      var cand = [];
+      for (var gx = 8; gx <= 47; gx += 0.5) {
+        for (var gy = 1.5; gy <= 48; gy += 0.5) {
+          if (town.isBlocked(gx, gy)) continue;
+          if (onAlley(town, gx, gy, 1.15)) continue;
+          if (U.pointInRect(gx, gy, town.square)) continue;
+          cand.push({ x: gx, y: gy });
+        }
+      }
+      cand = rng.sub('treespots').shuffle(cand);
+      var kept = [];
+      for (var i = 0; i < cand.length && kept.length < 10; i++) {
+        var c = cand[i], ok = true;
+        for (var k = 0; k < kept.length; k++) {
+          if (U.dist(c.x, c.y, kept[k].x, kept[k].y) < 4.0) { ok = false; break; }
+        }
+        if (ok) kept.push(c);
+      }
+      /* A controlled mix rather than whatever the sweep happened to find:
+         the two seaward spots get the palms, and the rest of the quarter gets
+         citrus, fig and olive, which is what actually grows in these yards. */
+      var tr = rng.sub('treekind');
+      kept.sort(function (a2, b2) { return (a2.x + a2.y) - (b2.x + b2.y); });
+      var bag = ['palm', 'palm', 'jacaranda', 'fig', 'lemon', 'olive',
+        'fig', 'lemon', 'olive', 'jacaranda'];
+      town.trees = kept.map(function (c, i) {
+        return { x: c.x, y: c.y, r: tr.float(1.3, 2.2), kind: bag[i % bag.length] };
+      });
+    }());
+
+    /* Lamps are brackets bolted to walls, not cobra heads on masts -- the
+       alleys are two metres wide. One of them is on its way out. */
+    var lampSpots = [
+      { x: 33.4, y: 26.0, dying: true },
+      { x: 12.0, y: 25.6, dying: false },
+      { x: 9.4, y: 12.0, dying: false },
+      { x: 9.4, y: 35.0, dying: false },
+      { x: 20.2, y: 20.0, dying: false },
+      { x: 26.0, y: 25.0, dying: false },
+      { x: 43.4, y: 24.0, dying: false },
+      { x: 28.7, y: 37.4, dying: true },
+      { x: 18.0, y: 43.0, dying: false },
+      { x: 34.0, y: 42.6, dying: false },
+      { x: 30.0, y: 10.6, dying: false },
+      { x: 44.6, y: 33.0, dying: false },
+      { x: 14.6, y: 3.4, dying: false }
+    ];
+    town.lamps = lampSpots.map(function (l, i) {
+      return { x: l.x, y: l.y, dying: l.dying, phase: rng.float(0, 6.2832), i: i };
+    });
+
+    /* enamel alley signs, and the shop signs that are all hand-painted */
+    town.signs = [
+      { x: 9.6, y: 26.4, yaw: 0, kind: 'alley', text: 'SOUK EL QADIM' },
+      { x: 19.0, y: 24.6, yaw: 1.57, kind: 'alley', text: 'DARB EL DARAJ' },
+      { x: 12.4, y: 23.2, yaw: 0, kind: 'alley', text: 'BAB EL MINA' },
+      { x: 27.6, y: 22.8, yaw: 0, kind: 'alley', text: 'EZ-ZAROUB' },
+      { x: 8.9, y: 11.4, yaw: 1.57, kind: 'alley', text: 'DARB EL AALIYE' },
+      { x: 8.9, y: 43.4, yaw: 1.57, kind: 'alley', text: 'DARB ET TAHTA' },
+      { x: 24.6, y: 26.6, yaw: 3.14, kind: 'shop', text: 'LIMONADA' },
+      { x: 17.2, y: 27.4, yaw: 3.14, kind: 'shop', text: 'FURN' },
+      { x: 30.2, y: 21.4, yaw: 0, kind: 'shop', text: 'SABON' },
+      { x: 40.4, y: 26.4, yaw: 3.14, kind: 'shop', text: 'QAHWE' },
+      { x: 40.0, y: 21.2, yaw: 0, kind: 'shop', text: 'COIFFEUR' },
+      { x: 18.2, y: 44.4, yaw: 3.14, kind: 'shop', text: 'DUKKAN' }
+    ].filter(function (g) { return !town.isBlocked(g.x, g.y) || g.kind === 'shop'; });
+
+    /* every house gets an empty tree list, because the scatter pass adds the
+       quarter's trees and the lots' trees together */
+    town.lots.forEach(function (l) { l.trees = []; });
+    town.home.trees = [];
+  }
+
   /* ------------------------------------------------------------------ *
    *  assembly
    * ------------------------------------------------------------------ */
@@ -863,7 +950,20 @@
     town.pavedStrips = [];                 /* nothing here is a poured strip */
     town.square = { x: 30.6, y: 27.2, w: 7.0, h: 5.8, fountain: { x: 34.1, y: 30.1, r: 0.95 } };
 
-    town.buildings = buildingDefs();
+    town.buildings = buildingDefs().map(function (b) {
+      var br = rng.sub('bld' + b.id);
+      b.x = b.rect[0]; b.y = b.rect[1]; b.w = b.rect[2]; b.h = b.rect[3];
+      b.storeys = b.storeys || 1;
+      b.wall = b.kind === 'chapel' ? '#efe8d8'
+        : b.kind === 'ruin' ? '#c3b49a'
+        : b.kind === 'shed' ? '#b9c0bd'
+        : br.pick(['#e6d9c2', '#e1d0b2', '#eadfcb', '#dccdb4']);
+      b.roofColor = br.pick(['#a8603f', '#9c5738', '#b06a45']);
+      b.civic = b.kind === 'chapel';
+      b.open = b.kind === 'kiosk';
+      b.ruin = b.kind === 'ruin';
+      return b;
+    });
     town.buildingById = {};
     town.buildings.forEach(function (b) { town.buildingById[b.id] = b; });
 
@@ -872,15 +972,22 @@
       var lr = rng.sub('house' + d.id);
       var door = facePoint(d.rect, d.face, 0.05);
       var stand = facePoint(d.rect, d.face, 1.35);
+      var FACE_N = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[d.face];
+      var wash = lr.pick(['#e8dcc6', '#e3d3b4', '#dfd0bd', '#e7d9c4', '#d9c9ae', '#eadfcb', '#ddcdb2']);
       return {
         id: d.id, rect: d.rect, road: d.road, face: d.face,
         storeys: d.storeys, number: d.number,
-        house: d.rect,
+        /* the renderer wants a rect object and a facing normal */
+        house: { x: d.rect[0], y: d.rect[1], w: d.rect[2], h: d.rect[3] },
+        nx: FACE_N[0], ny: FACE_N[1],
+        style: 'stone',
+        siding: wash,
         door: door, stand: stand, front: stand,
         /* limewash over sandstone, in whatever was going that decade */
-        wash: lr.pick(['#e8dcc6', '#e3d3b4', '#dfd0bd', '#e7d9c4', '#d9c9ae', '#eadfcb', '#ddcdb2']),
+        wash: wash,
         shutter: lr.pick(['#2f6f8f', '#356f86', '#2b6076', '#3f7f93', '#4a7f6a', '#7a5a3c', '#2a5d7a']),
         roof: d.storeys > 1 ? lr.pick(['tile', 'tile', 'flat']) : lr.pick(['tile', 'flat']),
+        roofColor: lr.pick(['#a8603f', '#9c5738', '#b06a45', '#95523a']),
         arcade: d.storeys > 1 && lr.chance(0.72),   /* the triple-arched window */
         balcony: d.storeys > 1 && lr.chance(0.58),
         stair: lr.chance(0.34),                      /* an outside stone stair */
@@ -1019,12 +1126,15 @@
     var homeLot = town.lots.filter(function (l) { return l.id === 'h13'; })[0];
     town.home = {
       lot: homeLot.id, rect: homeLot.rect,
+      house: { x: homeLot.rect[0], y: homeLot.rect[1], w: homeLot.rect[2], h: homeLot.rect[3] },
+      number: homeLot.number, siding: homeLot.siding, roofColor: homeLot.roofColor,
       door: { x: homeLot.door.x, y: homeLot.door.y },
       windowsill: { x: homeLot.rect[0] + homeLot.rect[2] + 0.15, y: homeLot.rect[1] + 1.2 },
       roof: { x: homeLot.rect[0] + homeLot.rect[2] / 2, y: homeLot.rect[1] + homeLot.rect[3] / 2 }
     };
     town.spawn = { x: homeLot.stand.x, y: homeLot.stand.y };
 
+    buildScenery(town, rng.sub('scenery'));
     buildProps(town, rng.sub('props'));
     buildGraph(town);
 

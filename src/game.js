@@ -1,7 +1,7 @@
 /* Errands — the game.
  *
- * You have the old Latham place on Depot Street, month to month. Nobody
- * sent for you. The quest log fills itself.
+ * You have the back room of number 6, off the souk in the old quarter of
+ * Batroun, month to month. Nobody sent for you. The quest log fills itself.
  */
 (function (ER) {
   'use strict';
@@ -14,7 +14,7 @@
 
   function Game(canvas, seed) {
     this.cv = canvas;
-    this.seedStr = seed || 'hollis bend';
+    this.seedStr = seed || 'batroun';
     this.town = ER.generateTown(this.seedStr);
     this.clock = new ER.Clock(this.seedStr);
     this.rng = new ER.RNG('play:' + this.seedStr);
@@ -69,14 +69,12 @@
 
   Game.prototype.buildWorld = function (onProgress) {
     var steps = [
-      ['the ground', function (g) { g.scene3d.buildTerrain(); }],
-      ['the fields', function (g) { g.scene3d.buildFields(); }],
-      ['the roads', function (g) { g.scene3d.buildRoads(); }],
-      ['driveways and lots', function (g) { g.scene3d.buildPads(); }],
-      ['Little Fox Creek', function (g) { g.scene3d.buildWater(); }],
-      ['the old grade', function (g) { g.scene3d.buildRail(); }],
-      ['thirty-one houses', function (g) { g.scene3d.buildStructures(); }],
-      ['poles, fences, cars, stones', function (g) { g.scene3d.buildScatter(); }],
+      ['the rock the quarter stands on', function (g) { g.scene3d.buildTerrain(); }],
+      ['eight alleys', function (g) { g.scene3d.buildRoads(); }],
+      ['the square and the quay', function (g) { g.scene3d.buildPads(); }],
+      ['the sea', function (g) { g.scene3d.buildWater(); }],
+      ['eighteen houses and the chapel', function (g) { g.scene3d.buildStructures(); }],
+      ['pots, nets, wires, cats', function (g) { g.scene3d.buildScatter(); }],
       ['the residents', function (g) { g.people3d = new ER.People3D(g.view.scene, g.town); }],
       ['weather', function (g) {
         g.rain = new ER.Rain(g.view.scene);
@@ -94,7 +92,9 @@
         });
       }],
       ['fog', function (g) {
-        g.view.scene.fog = new T.FogExp2(0xbfcbd4, 0.0018);
+        /* Light. Fifty metres of alley needs almost none, but the sea runs
+           to the horizon and wants the haze. */
+        g.view.scene.fog = new T.FogExp2(0xbfcbd4, 0.0042);
       }],
       /* Shader programs -- and especially the depth variants the shadow map
          needs -- compile the first time an object is actually drawn. Walking
@@ -103,18 +103,18 @@
          by drawing the town from a handful of vantage points. */
       ['warming up the shaders', function (g) {
         var spots = [
-          [1040, 1006, Math.PI * 1.5, 12.5],   /* the commercial strip at noon */
-          [1040, 1006, Math.PI * 0.5, 22.5],   /* the same, lit by streetlamps */
-          [679, 1124, Math.PI, 7.0],           /* Depot Street at dawn */
-          [585, 668, Math.PI * 1.15, 19.0],    /* the cemetery at dusk */
-          [1455, 1012, Math.PI * 0.5, 15.0],   /* the bridge, in the rain */
-          [1694, 450, Math.PI, 16.0],          /* the Vandermeer place */
-          [1673, 417, Math.PI * 0.4, 16.0],    /* inside the collapsed room */
-          [1176, 892, Math.PI, 14.0],          /* under the water tower */
-          [1296, 706, Math.PI * 1.25, 22.4],   /* the dying lamp on Quarry Road */
-          [1255, 1072, Math.PI, 13.0],         /* the old feed store lot */
-          [880, 1385, Math.PI * 0.5, 8.5],     /* the grade */
-          [1399, 1690, Math.PI * 0.5, 13.0]    /* the stone bridge */
+          [26, 25.6, Math.PI * 0.5, 12.5],     /* the souk at noon */
+          [26, 25.6, Math.PI * 1.5, 22.5],     /* the same, lit by the alley lamps */
+          [8.6, 30, Math.PI * 1.5, 7.0],       /* the quay at dawn, looking at the sea */
+          [9.4, 8.6, Math.PI * 1.25, 19.0],    /* Saydet el Bahr at dusk */
+          [7.6, 21.4, Math.PI * 1.5, 15.0],    /* the sea wall, in the rain */
+          [34.2, 31.6, Math.PI, 16.0],         /* the fountain square */
+          [26.0, 36.4, Math.PI * 0.5, 16.0],   /* the zaroub, at the abandoned house */
+          [20.9, 16.0, Math.PI, 14.0],         /* the alley of steps */
+          [33.4, 27.2, Math.PI * 1.5, 22.4],   /* the dying lamp on the souk */
+          [39.0, 12.4, Math.PI * 1.5, 13.0],   /* the bench on the landing */
+          [10.4, 46.0, Math.PI * 1.5, 8.5],    /* the slipway */
+          [18.6, 43.2, Math.PI, 13.0]          /* Darb et Tahta, at the dukkan */
         ];
         var keepMin = g.clock.minutes, keepWx = g.clock.weather;
         var keep = { x: g.view.pos.x, z: g.view.pos.z, yaw: g.view.yaw };
@@ -142,8 +142,8 @@
            without this the first shower of the game compiles three programs
            mid-stride. */
         var wxs = ['clear', 'overcast', 'drizzle', 'rain', 'storm', 'fog', 'frost'];
-        g.view.pos.x = 1040; g.view.pos.z = 1006;
-        g.view.pos.y = g.town.heightAt(1040, 1006);
+        g.view.pos.x = 26; g.view.pos.z = 25.6;
+        g.view.pos.y = g.town.heightAt(26, 25.6);
         g.view.move(1 / 60, { is: function () { return false; } }, g);
         for (var w = 0; w < wxs.length; w++) {
           g.clock.weather = wxs[w];
@@ -315,7 +315,7 @@
     if (n >= 10 && !M.m10) {
       M.m10 = 1; this.porchGifts.push('jar_empty');
       this.hud.flashCard('SOMETHING ON YOUR PORCH',
-        'A pint jar, clean, left on the step of the old Latham place. No note.');
+        'A glass jar, clean, left on the step at number 6. No note.');
     }
     if (n >= 25 && !M.m25) {
       M.m25 = 1; this.flags.usual = 1;
@@ -332,12 +332,12 @@
     }
     if (n >= 200 && !M.m200) {
       M.m200 = 1;
-      this.hud.flashCard('TWO HUNDRED', 'Hollis Bend has adjusted around you. Nobody remembers it being otherwise.');
+      this.hud.flashCard('TWO HUNDRED', 'The quarter has adjusted around you. Nobody remembers it being otherwise.');
     }
   };
 
   Game.prototype.onClock = function (ev, data) {
-    if (ev === 'newday') { this.hud.toast('Day ' + data + ' in Hollis Bend.', 'plain'); ER.Save.write(this); }
+    if (ev === 'newday') { this.hud.toast('Day ' + data + ' in the quarter.', 'plain'); ER.Save.write(this); }
     if (ev === 'weather') {
       var labels = { rain: 'It starts raining.', drizzle: 'It starts to spit.',
         storm: 'A storm comes over the section.', fog: 'Fog settles in the low ground.',
@@ -348,7 +348,7 @@
     if (ev === 'hour') {
       if (data === 12) {
         this.audio.play('siren');
-        if (U.dist(this.player.x, this.player.y, 1146, 924) < 600) this.hud.toast('The noon siren.', 'plain');
+        this.hud.toast('The chapel bell, twelve times.', 'plain');
       }
       if (data === 7 || data === 15) this.audio.play('bell');
     }
@@ -856,8 +856,8 @@
       this.hud.toast('You are still here. Day ' + this.clock.day + '.', 'plain');
     } else {
       this.director.issue();
-      this.hud.flashCard('HOLLIS BEND · POP. 30',
-        'You have the old Latham place, month to month. There is no reason for you to be here.');
+      this.hud.flashCard('BATROUN · EL QADIM · POP. 30',
+        'You have the back room at number 6, month to month. There is no reason for you to be here.');
     }
   };
 

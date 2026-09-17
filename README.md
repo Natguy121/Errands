@@ -1,21 +1,28 @@
 # Errands
 
-A first-person open-world game set in **Hollis Bend** — a real, working
-American town of thirty people and four square kilometres. There is asphalt,
-a gas station that sells you a jar, working streetlamps, satellite dishes,
-mowed yards, and one house going up on Elm Court.
+A first-person open-world game set in one block of the old quarter of
+**Batroun**, on the Lebanese coast. Fifty metres by fifty: eight stone alleys,
+eighteen sandstone houses with painted shutters and tile roofs, a fountain
+square, the souk, the Phoenician sea wall with the Mediterranean behind it, and
+a chapel on the rocks. Thirty people live here. There is mains electricity when
+the mains feel like it, a generator when they do not, satellite dishes on every
+roof and black water tanks on every parapet.
 
-You have the old Latham place on Depot Street, month to month. Nobody sent
+You have the back room of number 6, off the souk, month to month. Nobody sent
 for you. There is no main quest, no combat, no puzzle and no ending.
 
 What there is, is the quest log, which fills itself:
 
 > **ERRAND 1**
-> Collect exactly one glass jar of water from the shallow bend beneath the
-> concrete bridge, seal it, and wrap twine around the rim.
-> *It must be the shallow bend. The deep bend is wrong. Three turns of twine, no more.*
+> Collect exactly one glass jar of sea water from the shallow channel cut
+> through the Phoenician wall, seal it, and wrap twine around the rim.
+> *It must be the shallow channel. The deep one further along is wrong. Three turns of twine, no more.*
 
 Finish it and you are handed another one immediately, forever.
+
+Fifty metres is the joke. Every errand is ninety seconds' walk from every
+other one, so you will be back at the same fountain eleven times today for
+eleven unrelated reasons, in front of the same thirty people.
 
 ---
 
@@ -32,7 +39,7 @@ npx http-server -p 8099 -s .     # or: python3 -m http.server 8099
 Then open **http://localhost:8099/** and press **Move in**.
 
 Requires WebGL2 and a mouse (it takes a pointer lock to look around).
-A day in Hollis Bend takes twenty-four real minutes. Progress saves itself
+A day in the quarter takes twenty-four real minutes. Progress saves itself
 every twenty-five seconds and on every new day.
 
 The loading bar spends its last step drawing the town from twelve vantage
@@ -62,48 +69,64 @@ would hitch. Better to pay for it once, behind the bar.
 
 ## What is actually in here
 
-**The town is generated once from a seed and is the same town every time.**
-Twelve roads with crowned asphalt, painted centre lines, graded gravel
-shoulders and utility poles carrying catenary wires. Little Fox Creek comes
-down from the north-east and is crossed twice: by the concrete bridge on Main
-Street, and by the old stone bridge on County Road 9, which is where the moss
-is. An abandoned rail grade runs across the south and stops at the creek,
-because the trestle came out in the eighties.
+**The quarter is generated once from a seed and is the same quarter every
+time.** Eight stone alleys: the souk running east from the quay, Rue de la Mer
+along the sea wall, Bab el Mina dropping to the harbour, Ez-Zaroub so narrow
+you turn your shoulders to pass somebody, an upper and a lower alley, an east
+alley, and Darb el Daraj, which is stairs — the terrain quantises to a 0.17 m
+stone tread, so it climbs 3.16 m in about twenty risers and you walk up it a
+step at a time.
 
-Thirty house lots are anchored to their roads, so every house faces the
-street, with driveways, parked cars, satellite dishes, sheds, gardens,
-trampolines, clotheslines, propane tanks and mailboxes. Nineteen other
-structures: Bend Mart, Halter's Diner, Pell Hardware, the post office, the
-24-hour laundromat, the town hall and volunteer fire department, Trinity
-Methodist, the elementary school and its portable classroom, the shuttered
-feed store, self-storage, the co-op and its silos, the Vandermeer place
-falling in on itself, the park pavilion, the bus shelter, the old mill
-foundation, and the framed-up house on Elm Court.
+The Phoenician sea wall runs the whole west side with a crest you can stand on
+and the Mediterranean behind it, and there is a channel cut through it where
+the sea comes in. Saydet el Bahr sits on the rocks at the top of the quay with
+a bell in its gable and an iron cross on the roof. Sahat en-Nafoura is seven
+metres by six with a fountain in the middle and one broken tile in the floor.
 
-The cemetery is on the rise, which is why it is there. It has forty-odd
-stones, and the earliest date on any of them matters to one of the errands.
+Eighteen houses, packed close enough to share walls: sandstone under lime
+render in whatever wash was going that decade, painted shutters, tile or flat
+roofs, triple-arched windows on the first floor, outside stone stairs,
+balconies, geraniums in terracotta pots by every door, bougainvillea over some
+of the arches, a black water tank and a satellite dish on nearly every roof,
+and the meter boxes and the thrown-across wiring that actually feed them. Ten
+other structures: the furn, Abou Georges' lemonade stand, the soap shop, the
+qahwe with its plastic chairs and an abandoned backgammon game, Tony's barber
+shop, the dukkan on Darb et Tahta, the fishermen's shed on the quay, Teta
+Therese's house, the chapel, and the house on the zaroub that nobody has lived
+in since the roof came down in one room.
 
-**Thirty residents** live in those houses. They have names, ages and jobs —
-the clerk, the cook, the postmaster, three people who work remote, a nurse
-who commutes, a retired highway man who walks the same loop twice a day, an
-eleven-year-old with a bike and opinions. They walk the road network between
-home and work on a daily schedule, and they see you. Over and over. What they
-say to you changes as you accumulate errands, from *"Trash is Thursday, they
-come early"* through *"Somebody said you were up at the cemetery, in the dark"*
-to, eventually, *"Jars are on aisle two. I ordered more in for you."*
+**228 things you can walk up to and press E on**, in 2500 square metres. That
+density is the point: the moss on the third stone of the sea wall, the iron
+mooring ring, the letter cut into the wall, the urchin shells somebody lined
+up on the coping, the capers growing out of the joints, the cracked tread
+eleven steps up, the drainpipe that drips, the cistern lid, the gas canisters
+chained in the zaroub, the tangle of wires at the pole, the quarter's
+generator, the posters pasted over each other, and three cats.
 
-**Sixty errand templates**, each of which randomises its own particulars — the
-grave, the count, the hour, the fence post, the exact number of turns of
+**Thirty residents** live in those eighteen houses, so most doors have two
+names behind them and the quarter has families in it. They have names, ages
+and work — the lemonade man, the baker at the furn, the woman who keeps the
+dukkan, Abouna who says the morning mass, the teta who sits on her balcony and
+misses nothing, the man who keeps the generator running and collects for it in
+cash, four people working remote from their roofs, a nurse who commutes up the
+coast, the woman who waters pots on three doorsteps that are not hers, and an
+eleven-year-old with a bike and opinions about the cats. They walk the alley
+network between home and work on a daily schedule, and they see you. Over and
+over, because there is nowhere else to be.
+
+**Seventy errand templates**, each of which randomises its own particulars —
+the stone, the count, the hour, the shutter, the exact number of turns of
 twine — so the pool generates errands in the thousands. Eleven kinds of step:
 buying, acting, searching, gathering, waiting, making, photographing,
 photographing a whole set, editing a photograph, walking a route, and writing
-something down. Errands can be gated on the hour (dusk, before sunrise, the
-noon siren), on the weather (you cannot fill a jar with fog on a clear day),
+something down. Errands can be gated on the hour (dusk, after dark, before
+sunrise), on the weather (you cannot catch a jar of sea fog on a clear day),
 and on the calendar (some things have to sit on your windowsill overnight).
 
-A few places exist only so the fine print can be wrong about something. There
-is a deep bend as well as a shallow one. There is mint behind the diner as
-well as behind the church. There is a storm drain that does not echo.
+A few things exist only so the fine print can be wrong about something. There
+is a deep channel in the wall as well as a shallow one. There is basil in the
+other tin by the chapel door. There is a younger fig by the shrine. The three
+steps at the bottom of Darb el Daraj are the kerb and do not count.
 
 ---
 
@@ -134,7 +157,7 @@ src/
                         roughness maps derived from its own height field
     geom.js             ribbons that follow the ground, gable roofs, batching
     sky.js              sun, moon, stars, cloud; hands out the scene lighting
-    world3d.js          terrain, roads, pads, creek, the grade
+    world3d.js          the rock shelf, the alleys, the paving, the sea
     structures.js       houses and buildings; instanced window panes
     scatter.js          trees, grass, fences, poles, cars, stones, hit volumes
     people3d.js         resident rigs and their walk
@@ -153,7 +176,7 @@ test/
 node test/run.js
 ```
 
-Checks town invariants, that the resident walk graph is fully connected, that
+Checks the quarter's invariants, that the resident walk graph is fully connected, that
 every interactable has somewhere to stand, that every errand template refers
 only to props, items and verbs that exist — and then drives all sixty
 templates to completion with a solver, so nothing in the pool can be
@@ -196,18 +219,24 @@ rasteriser:
 
 ## Why it works
 
-The juxtaposition is the whole joke. A functioning town with internet and a
-propane cage is a much stranger place to be scraping moss into a plastic spoon
-than a ruin would be. Nothing here is post-apocalyptic; the lights work, the
-diner is open, somebody is framing a house. You are the only thing out of
-place, and the population is thirty, so there is nowhere to do this unobserved.
+The juxtaposition is the whole joke. A working quarter with wifi, satellite
+dishes and a man who comes round for the generator money is a much stranger
+place to be scraping moss into a tin spoon than a ruin would be. Nothing here
+is post-apocalyptic; the furn is open at half five, the qahwe is open until
+eleven, somebody is repointing a wall. You are the only thing out of place.
+
+And the place is fifty metres across, which makes it worse. In four square
+kilometres you could at least be strange somewhere nobody was looking. Here
+the same thirty people watch you count the same steps for the third time
+today, from balconies two metres above your head.
 
 The errands never resolve into anything. Completing one earns a line of text
 and the next errand. What accumulates instead is knowledge of the place: which
-of the five hydrants has the worst paint, which drain echoes, where the clay
-bank is, what time the tower's shadow crosses Quarry Road. By the two
-hundredth errand the town has quietly adjusted around you, and nobody
-remembers it being otherwise.
+shutter is actually the bluest, which stone in the wall has the moss on it,
+where the clay is under the wall, what the fountain sounds like at four in the
+morning, which of the three cats will sit still. By the two hundredth errand
+the quarter has quietly adjusted around you, and nobody remembers it being
+otherwise.
 
 ## Credits
 

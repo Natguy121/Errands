@@ -258,63 +258,67 @@
     function my(y) { return y * s; }
     var i, k;
 
-    c.fillStyle = '#1d211b';
+    /* the rock the quarter stands on */
+    c.fillStyle = '#2a261f';
     c.fillRect(0, 0, W, W);
-    for (i = 0; i < town.fields.length; i++) {
-      var f = town.fields[i];
-      c.fillStyle = f.crop === 'corn' ? 'rgba(150,132,80,0.34)'
-        : f.crop === 'fallow' ? 'rgba(120,104,80,0.30)' : 'rgba(110,126,80,0.28)';
-      c.fillRect(mx(f.x), my(f.y), f.w * s, f.h * s);
-    }
-    for (i = 0; i < town.woods.length; i++) {
-      var wd = town.woods[i];
-      c.fillStyle = 'rgba(56,74,50,0.55)';
-      c.fillRect(mx(wd.x), my(wd.y), wd.w * s, wd.h * s);
-    }
-    c.strokeStyle = '#4e6f7a'; c.lineWidth = Math.max(1.4, 4.4 * s); c.lineJoin = 'round';
+
+    /* the sea, west of the wall */
+    c.fillStyle = '#20404c';
+    c.fillRect(0, 0, mx(town.sea.edge), W);
+    c.strokeStyle = 'rgba(180,196,200,0.5)';
+    c.lineWidth = Math.max(1.2, 1.4 * s);
     c.beginPath();
-    c.moveTo(mx(town.creek.pts[0][0]), my(town.creek.pts[0][1]));
-    for (i = 1; i < town.creek.pts.length; i++) c.lineTo(mx(town.creek.pts[i][0]), my(town.creek.pts[i][1]));
+    c.moveTo(mx(town.sea.wall.x), 0);
+    c.lineTo(mx(town.sea.wall.x), W);
     c.stroke();
-    c.fillStyle = '#4e6f7a';
-    c.beginPath();
-    c.ellipse(mx(town.pond.x), my(town.pond.y), town.pond.r * s, town.pond.r * 0.82 * s, 0, 0, 6.2832);
-    c.fill();
-    c.strokeStyle = 'rgba(150,142,130,0.7)'; c.lineWidth = 1.3; c.setLineDash([5, 4]);
-    c.beginPath();
-    c.moveTo(mx(town.rail.pts[0][0]), my(town.rail.pts[0][1]));
-    for (i = 1; i < town.rail.pts.length; i++) c.lineTo(mx(town.rail.pts[i][0]), my(town.rail.pts[i][1]));
-    c.stroke(); c.setLineDash([]);
+
+    /* the square */
+    var sq = town.square;
+    c.fillStyle = 'rgba(190,178,154,0.30)';
+    c.fillRect(mx(sq.x), my(sq.y), sq.w * s, sq.h * s);
+
+    /* the alleys */
     for (i = 0; i < town.roads.length; i++) {
       var rd = town.roads[i];
-      c.strokeStyle = rd.kind === 'asphalt' ? 'rgba(210,206,194,0.82)' : 'rgba(158,150,136,0.6)';
-      c.lineWidth = Math.max(1.5, rd.width * s * (rd.kind === 'asphalt' ? 0.9 : 0.75));
+      c.strokeStyle = rd.steps ? 'rgba(206,196,176,0.72)' : 'rgba(198,190,172,0.62)';
+      c.lineWidth = Math.max(1.6, rd.width * s * 0.85);
+      c.lineCap = 'round';
+      if (rd.steps) c.setLineDash([3.5, 2.5]);
       c.beginPath();
       c.moveTo(mx(rd.pts[0][0]), my(rd.pts[0][1]));
       for (k = 1; k < rd.pts.length; k++) c.lineTo(mx(rd.pts[k][0]), my(rd.pts[k][1]));
       c.stroke();
+      c.setLineDash([]);
     }
+
+    /* the houses and the shops, and the one you sleep in */
     for (i = 0; i < town.buildings.length; i++) {
       var b = town.buildings[i];
-      c.fillStyle = (b.derelict || b.ruin) ? 'rgba(150,142,130,0.5)' : 'rgba(228,224,210,0.85)';
+      c.fillStyle = b.ruin ? 'rgba(150,142,130,0.5)'
+        : b.kind === 'chapel' ? 'rgba(240,236,224,0.92)' : 'rgba(228,220,202,0.86)';
       c.fillRect(mx(b.x), my(b.y), Math.max(2, b.w * s), Math.max(2, b.h * s));
     }
     for (i = 0; i < town.lots.length; i++) {
       var hs = town.lots[i].house;
-      c.fillStyle = 'rgba(206,200,186,0.64)';
+      c.fillStyle = 'rgba(212,202,182,0.68)';
       c.fillRect(mx(hs.x), my(hs.y), Math.max(2, hs.w * s), Math.max(2, hs.h * s));
     }
-    c.fillStyle = '#e0bf6f';
-    c.fillRect(mx(town.home.house.x) - 1, my(town.home.house.y) - 1,
-      Math.max(4, town.home.house.w * s) + 2, Math.max(4, town.home.house.h * s) + 2);
-    var cem = town.cemetery.plot;
-    c.strokeStyle = 'rgba(200,198,186,0.42)'; c.lineWidth = 1;
-    c.strokeRect(mx(cem.x), my(cem.y), cem.w * s, cem.h * s);
+    var hh = town.home.house;
+    c.strokeStyle = '#e0bf6f'; c.lineWidth = 1.6;
+    c.strokeRect(mx(hh.x) - 1, my(hh.y) - 1, Math.max(4, hh.w * s) + 2, Math.max(4, hh.h * s) + 2);
+
+    /* the fountain */
+    c.fillStyle = '#6f97a2';
+    c.beginPath();
+    c.ellipse(mx(sq.fountain.x), my(sq.fountain.y), Math.max(1.6, sq.fountain.r * s),
+      Math.max(1.6, sq.fountain.r * s), 0, 0, 6.2832);
+    c.fill();
 
     c.font = '9px ui-monospace, Menlo, monospace';
     c.fillStyle = 'rgba(206,204,192,0.6)';
-    var labels = [['main', 900, 991], ['church', 770, 600], ['depot', 592, 1124],
-      ['quarry', 1312, 420], ['cr9', 380, 1572], ['elm', 1190, 1266], ['mill', 1452, 1250]];
+    var labels = [['souk', 22, 25.0], ['quay', 8.4, 32], ['daraj', 21.0, 16],
+      ['mina', 13.2, 38], ['zaroub', 28.2, 34], ['aliya', 30, 10.2],
+      ['tahta', 26, 42.6], ['sharq', 45.0, 30]];
     for (i = 0; i < labels.length; i++) {
       var rdd = town.roadById[labels[i][0]];
       if (!rdd) continue;
@@ -360,7 +364,7 @@
     c.beginPath(); c.moveTo(0, -7); c.lineTo(4.4, 5); c.lineTo(-4.4, 5); c.closePath(); c.fill();
     c.restore();
 
-    this.mapInfo.innerHTML = '<b>HOLLIS BEND</b><span>pop. 30 · 4.0 km² · ' + known + ' of ' +
+    this.mapInfo.innerHTML = '<b>BATROUN &middot; EL QADIM</b><span>pop. 30 &middot; 50&times;50 m &middot; ' + known + ' of ' +
       town.landmarks.length + ' places found</span><em>M to close</em>';
   };
 
@@ -374,7 +378,7 @@
     var rows = [
       ['Errands completed', U.commas(d.history.length)],
       ['Errands abandoned', U.commas(d.abandoned)],
-      ['Days in Hollis Bend', String(g.clock.day)],
+      ['Days in the quarter', String(g.clock.day)],
       ['Distance walked', (st.walked / 1000).toFixed(2) + ' km'],
       ['Things picked up', U.commas(st.picked)],
       ['Junk turned up', U.commas(st.junk)],

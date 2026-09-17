@@ -128,12 +128,12 @@
     /* --- foundation --- */
     var fg = G.box(w + 0.18, found + 0.12, d + 0.18, TILE.concrete);
     fg.translate(0, base - 0.12, 0);
-    batch.add('foundation', fg, this.material('concrete', { color: 0xb6b2a6 }), xf);
+    batch.add('foundation', fg, this.material('sandstone', {}), xf);
 
     /* --- walls --- */
-    var wallMat = this.material('siding', { color: lot.siding, roughness: 0.85 });
+    var wallMat = this.material('limewash', { color: lot.siding, roughness: 0.82 });
     var wallKey = 'siding_' + lot.siding;
-    var wg = G.box(w, wallH, d, TILE.siding);
+    var wg = G.box(w, wallH, d, TILE.limewash);
     wg.translate(0, y0, 0);
     batch.add(wallKey, wg, wallMat, xf);
     if (lot.skirt) {
@@ -144,10 +144,10 @@
 
     /* --- roof --- */
     var rise = Math.min(w, d) * 0.42;
-    var gb = G.gable(w, d, rise, 0.5, TILE.shingle);
+    var gb = G.gable(w, d, rise, 0.5, TILE.tile);
     gb.roof.translate(0, y0 + wallH, 0);
     batch.add('shingle_' + lot.roofColor, gb.roof,
-      this.material('shingle', { color: lot.roofColor, roughness: 0.95 }), xf);
+      this.material('tile', { roughness: 0.8 }), xf);
     gb.gables.translate(0, y0 + wallH, 0);
     batch.add(wallKey, gb.gables, wallMat, xf);
 
@@ -239,10 +239,10 @@
         post.translate(px, y0, d / 2 + pd - 0.22);
         batch.add('trim', post, fasciaMat, xf);
       }
-      var proof = G.box(pw + 0.3, 0.14, pd + 0.4, TILE.shingle);
+      var proof = G.box(pw + 0.3, 0.14, pd + 0.4, TILE.tile);
       proof.translate(0, y0 + 2.32, d / 2 + pd / 2 - 0.1);
       batch.add('shingle_' + lot.roofColor, proof,
-        this.material('shingle', { color: lot.roofColor }), xf);
+        this.material('tile', {}), xf);
       /* steps down to the ground */
       for (var sN = 0; sN < 2; sN++) {
         var stp = G.box(1.5, 0.16, 0.32, TILE.concrete);
@@ -321,7 +321,7 @@
     var wallMat, wallKey;
     if (b.brick) { wallMat = this.material('brick', {}); wallKey = 'brick'; }
     else if (b.derelict) { wallMat = this.material('wood', { color: b.wall }); wallKey = 'derelictwall_' + b.wall; }
-    else { wallMat = this.material('siding', { color: b.wall }); wallKey = 'siding_' + b.wall; }
+    else { wallMat = this.material('limewash', { color: b.wall }); wallKey = 'siding_' + b.wall; }
 
     if (b.ruin) {
       /* a foundation and two courses of block, and nothing else */
@@ -378,7 +378,7 @@
     }
 
     /* --- walls --- */
-    var wg = G.box(b.w, wallH, b.h, b.brick ? TILE.brick : TILE.siding);
+    var wg = G.box(b.w, wallH, b.h, b.brick ? TILE.brick : TILE.limewash);
     wg.translate(0, base, 0);
     if (!b.open) batch.add(wallKey, wg, wallMat, xf);
 
@@ -399,9 +399,9 @@
         }
       } else {
         var rise2 = Math.min(b.w, b.h) * 0.38;
-        var gb2 = G.gable(b.w, b.h, rise2, 0.4, TILE.shingle);
+        var gb2 = G.gable(b.w, b.h, rise2, 0.4, TILE.tile);
         gb2.roof.translate(0, base + wallH, 0);
-        batch.add('shingle_' + b.roof, gb2.roof, this.material('shingle', { color: b.roof }), xf);
+        batch.add('shingle_' + b.roof, gb2.roof, this.material('tile', {}), xf);
         gb2.gables.translate(0, base + wallH, 0);
         batch.add(wallKey, gb2.gables, wallMat, xf);
       }
@@ -479,13 +479,13 @@
 
     /* --- the steeple --- */
     if (b.steeple) {
-      var tower = G.box(3.0, wallH + 3.6, 3.0, TILE.siding);
+      var tower = G.box(3.0, wallH + 3.6, 3.0, TILE.limewash);
       tower.translate(0, base, b.h / 2 - 1.6);
       batch.add(wallKey, tower, wallMat, xf);
       var spire = new T.ConeGeometry(2.3, 5.2, 4);
       spire.rotateY(Math.PI / 4);
       spire.translate(0, base + wallH + 3.6 + 2.6, b.h / 2 - 1.6);
-      batch.add('shingle_' + b.roof, spire, this.material('shingle', { color: 0x4f4b44 }), xf);
+      batch.add('shingle_' + b.roof, spire, this.material('tile', {}), xf);
       var cross = G.box(0.1, 1.1, 0.1);
       cross.translate(0, base + wallH + 9.0, b.h / 2 - 1.6);
       batch.add('trim', cross, this.flat('fascia', 0xe4e0d4, 0.7, 0), xf);
@@ -520,227 +520,110 @@
 
   S.buildLandmarks = function (batch) {
     var town = this.town, h = this.h;
-    var steel = this.flat('steel', 0xa8ada8, 0.48, 0.72);
-    var steelDark = this.flat('steelDark', 0x6e7370, 0.55, 0.65);
-    var concrete = this.material('concrete', {});
-    var stone = this.material('stone', {});
+    var iron = this.flat('iron', 0x4a453e, 0.58, 0.55);
+    var brass = this.flat('brass', 0x9a7c42, 0.42, 0.72);
+    var stone = this.material('stone', { color: 0xb2a48d });
+    var coping = this.material('stone', { color: 0xa2947d });
     var i;
 
-    /* ---- the water tower ---- */
-    var wt = town.watertower;
-    var wtB = h(wt.x, wt.y);
-    var legs = [[-8, 9], [8, 9], [-8, -7], [8, -7]];
-    for (i = 0; i < legs.length; i++) {
-      var lg = G.cyl(0.22, 0.28, 17, 8);
-      lg.translate(wt.x + legs[i][0], wtB, wt.y + legs[i][1]);
-      batch.add('steel', lg, steel);
-      /* a strut back to the middle */
-      var st = G.cyl(0.08, 0.08, 11.5, 5);
-      st.rotateZ(Math.atan2(legs[i][0], 9) * 0.9);
-      st.rotateY(Math.atan2(legs[i][1], legs[i][0]));
-      st.translate(wt.x + legs[i][0] * 0.5, wtB + 4, wt.y + legs[i][1] * 0.5);
-      batch.add('steel', st, steelDark);
-    }
-    var bowlG = new T.CylinderGeometry(wt.r, wt.r * 0.92, 8.5, 24, 1, false);
-    bowlG.translate(wt.x, wtB + 17 + 4.25, wt.y);
-    batch.add('towerTank', bowlG, this.flat('tank', 0xc2c6c2, 0.52, 0.5));
-    var domeT = new T.SphereGeometry(wt.r * 0.96, 24, 8, 0, 6.2832, 0, Math.PI * 0.42);
-    domeT.translate(wt.x, wtB + 17 + 8.5, wt.y);
-    batch.add('towerTank', domeT, this.flat('tank', 0xc2c6c2, 0.52, 0.5));
-    var domeB = new T.SphereGeometry(wt.r * 0.9, 24, 8, 0, 6.2832, Math.PI * 0.58, Math.PI * 0.42);
-    domeB.translate(wt.x, wtB + 17, wt.y);
-    batch.add('towerTank', domeB, this.flat('tank', 0xb4b8b4, 0.55, 0.5));
-    /* the ladder you are told not to climb, and its cage */
-    for (var rung = 0; rung < 42; rung++) {
-      var rg = G.box(0.52, 0.035, 0.035);
-      rg.translate(wt.x - 8.4, wtB + 0.4 + rung * 0.4, wt.y + 9.3);
-      batch.add('steel', rg, steelDark);
-    }
-    for (var rail = -1; rail <= 1; rail += 2) {
-      var rl = G.cyl(0.03, 0.03, 17, 4);
-      rl.translate(wt.x - 8.4 + rail * 0.26, wtB + 0.4, wt.y + 9.3);
-      batch.add('steel', rl, steelDark);
-    }
-    var catwalk = new T.TorusGeometry(wt.r + 0.35, 0.05, 5, 28);
-    catwalk.rotateX(Math.PI / 2);
-    catwalk.translate(wt.x, wtB + 17.6, wt.y);
-    batch.add('steel', catwalk, steelDark);
-    /* HOLLIS BEND, painted on */
-    var wtTex = G.signTexture(['HOLLIS BEND'], { w: 1024, h: 256, bg: '#00000000',
-      fg: '#5d6a72', size: 150, grunge: false });
-    var wtMat = new T.MeshStandardMaterial({ map: wtTex, transparent: true, roughness: 0.62 });
-    var wtCan = document.createElement('canvas'); wtCan.width = 1024; wtCan.height = 256;
-    var wtc = wtCan.getContext('2d');
-    wtc.clearRect(0, 0, 1024, 256);
-    wtc.fillStyle = '#5a6770'; wtc.textAlign = 'center'; wtc.textBaseline = 'middle';
-    wtc.font = '700 150px "Helvetica Neue", Arial, sans-serif';
-    wtc.fillText('HOLLIS BEND', 512, 136);
-    var wtT2 = new T.CanvasTexture(wtCan); wtT2.colorSpace = T.SRGBColorSpace;
-    wtMat.map = wtT2;
-    for (var face = 0; face < 2; face++) {
-      var band = new T.Mesh(new T.PlaneGeometry(wt.r * 1.75, wt.r * 0.44), wtMat);
-      band.position.set(wt.x + (face ? 0 : 0), wtB + 21.4, wt.y + (face ? wt.r * 0.99 : -wt.r * 0.99));
-      band.rotation.y = face ? 0 : Math.PI;
-      this.root.add(band);
+    /* ---- the Phoenician wall ----
+       The crest is terrain, so what is built here is only the dressing: a
+       coping course along the top and the stones of the seaward face. */
+    var wall = town.sea.wall;
+    var crest = [];
+    for (i = -1; i <= town.h + 1; i += 1.0) crest.push([wall.x, i]);
+    batch.add('wallcap', G.ribbon(crest, {
+      height: function (x, z) { return h(x, z) + 0.06; },
+      width: wall.halfWidth * 2 + 0.3, lift: 0, step: 1.0, uvPerMetre: 0.8
+    }), coping);
+    /* the face, stepped twice, so it reads as courses from the quay */
+    batch.add('wallface', G.ribbon(crest, {
+      height: function (x, z) { return h(x, z) - 0.55; },
+      width: wall.halfWidth * 2 + 1.0, lift: 0, step: 1.0, uvPerMetre: 0.8
+    }), stone);
+    batch.add('wallface', G.ribbon(crest, {
+      height: function (x, z) { return h(x, z) - 1.25; },
+      width: wall.halfWidth * 2 + 1.7, lift: 0, step: 1.0, uvPerMetre: 0.8
+    }), stone);
+
+    /* the mooring ring, and the channel's cheeks */
+    var mp = town.props.wall_mooring;
+    if (mp) {
+      var ring = new T.TorusGeometry(0.22, 0.045, 6, 12);
+      ring.rotateY(Math.PI / 2);
+      ring.translate(wall.x - 0.6, h(wall.x, mp.y) + 0.42, mp.y);
+      batch.add('mooring', ring, iron);
     }
 
-    /* ---- the cell tower on the ridge ---- */
-    var ct = town.celltower, ctB = h(ct.x, ct.y);
-    var H = 34;
-    for (var leg = 0; leg < 3; leg++) {
-      var a = (leg / 3) * 6.2832;
-      var lx = Math.cos(a) * 1.9, lz = Math.sin(a) * 1.9;
-      var mast = G.cyl(0.10, 0.18, H, 5);
-      mast.rotateZ(-Math.atan2(lx, H) * 0.5);
-      mast.rotateY(-a);
-      mast.translate(ct.x + lx, ctB, ct.y + lz);
-      batch.add('steel', mast, steel);
-    }
-    for (var brace = 0; brace < 22; brace++) {
-      var by = ctB + 1 + brace * 1.5;
-      var ring = new T.TorusGeometry(1.75 * (1 - brace / 40), 0.035, 4, 3);
-      ring.rotateX(Math.PI / 2);
-      ring.translate(ct.x, by, ct.y);
-      batch.add('steel', ring, steelDark);
-    }
-    for (var ant = 0; ant < 6; ant++) {
-      var aa = (ant / 6) * 6.2832;
-      var pan = G.box(0.26, 1.5, 0.12);
-      pan.translate(ct.x + Math.cos(aa) * 2.3, ctB + H - 3.6, ct.y + Math.sin(aa) * 2.3);
-      batch.add('antenna', pan, this.flat('antenna', 0xd0d2cc, 0.6, 0.2));
-    }
-    var beaconGeo = new T.SphereGeometry(0.3, 8, 6);
-    beaconGeo.translate(ct.x, ctB + H + 0.4, ct.y);
-    this.beacon = new T.Mesh(beaconGeo, new T.MeshStandardMaterial({
-      color: 0x501010, emissive: new T.Color(0xff2a18), emissiveIntensity: 2, roughness: 0.4 }));
-    this.root.add(this.beacon);
+    /* ---- the fountain in Sahat en-Nafoura ---- */
+    var f = town.square.fountain;
+    var fB = h(f.x, f.y);
+    var basin = G.cyl(f.r, f.r + 0.12, 0.52, 16);
+    basin.translate(f.x, fB, f.y);
+    batch.add('fountain', basin, stone);
+    var lip = new T.TorusGeometry(f.r, 0.07, 6, 18);
+    lip.rotateX(Math.PI / 2);
+    lip.translate(f.x, fB + 0.54, f.y);
+    batch.add('fountain', lip, coping);
+    var stem = G.cyl(0.18, 0.24, 1.15, 10);
+    stem.translate(f.x, fB + 0.3, f.y);
+    batch.add('fountain', stem, stone);
+    var bowl = G.cyl(0.46, 0.2, 0.16, 12);
+    bowl.translate(f.x, fB + 1.4, f.y);
+    batch.add('fountain', bowl, stone);
+    /* the spout somebody has polished by using it for sixty years */
+    var spout = G.cyl(0.045, 0.045, 0.34, 8);
+    spout.rotateZ(Math.PI / 2);
+    spout.translate(f.x - 0.34, fB + 1.06, f.y);
+    batch.add('fountainspout', spout, brass);
 
-    /* ---- the co-op silos ---- */
-    for (i = 0; i < town.silos.length; i++) {
-      var si = town.silos[i], sB = h(si.x, si.y);
-      var body = G.cyl(si.r, si.r, 19, 20, 0.22);
-      body.translate(si.x, sB, si.y);
-      batch.add('siloBody', body, this.flat('silo', 0xb9bcb6, 0.6, 0.45));
-      var cone = new T.ConeGeometry(si.r + 0.2, 3.2, 20);
-      cone.translate(si.x, sB + 19 + 1.6, si.y);
-      batch.add('siloBody', cone, this.flat('silo', 0xa8aca6, 0.6, 0.45));
-      /* the corrugation, as rings */
-      for (var ring2 = 0; ring2 < 12; ring2++) {
-        var rr = new T.TorusGeometry(si.r + 0.04, 0.045, 4, 20);
-        rr.rotateX(Math.PI / 2);
-        rr.translate(si.x, sB + 0.8 + ring2 * 1.55, si.y);
-        batch.add('siloBody', rr, this.flat('siloRing', 0x9ea29c, 0.62, 0.5));
+    /* ---- the chapel: Saydet el Bahr ----
+       buildBuilding lays the box and the roof; this adds the bell arch and
+       the cross, which are the whole silhouette from the quay. */
+    var ch = town.buildingById.chapel;
+    if (ch) {
+      var cx = ch.rect[0] + ch.rect[2] / 2, cz = ch.rect[1] + ch.rect[3] / 2;
+      var cB = h(cx, cz);
+      /* the gable wall above the door, carrying the bell */
+      var gable = G.box(1.5, 1.5, 0.34);
+      gable.translate(cx, cB + 3.5, ch.rect[1] + ch.rect[3] + 0.1);
+      batch.add('chapelbell', gable, stone);
+      var bell = G.cyl(0.13, 0.19, 0.3, 10);
+      bell.translate(cx, cB + 3.6, ch.rect[1] + ch.rect[3] + 0.1);
+      batch.add('chapelbell', bell, brass);
+      /* and the cross */
+      var up = G.box(0.08, 1.0, 0.08);
+      up.translate(cx, cB + 4.7, cz);
+      batch.add('chapelcross', up, iron);
+      var across = G.box(0.52, 0.08, 0.08);
+      across.translate(cx, cB + 4.92, cz);
+      batch.add('chapelcross', across, iron);
+    }
+
+    /* ---- the steps of Darb el Daraj ----
+       The terrain is already quantised into treads; these are the nosings,
+       which is what makes them read as steps rather than as a ramp. */
+    var daraj = town.roadById.daraj;
+    if (daraj) {
+      var pts = daraj.pts.map(function (q) { return [q[0], q[1]]; });
+      var len = ER.poly.length(pts);
+      var prevH = null;
+      for (var s = 0; s <= len; s += 0.22) {
+        var at = ER.poly.pointAt(pts, s);
+        var hh = h(at.x, at.y);
+        if (prevH !== null && Math.abs(hh - prevH) > 0.05) {
+          var nose = G.box(daraj.width * 0.94, 0.07, 0.12);
+          var nrm = ER.poly.normal(pts, at.seg);
+          var yaw = Math.atan2(nrm.tx, nrm.ty);
+          nose.rotateY(-yaw);
+          nose.translate(at.x, Math.max(hh, prevH) + 0.02, at.y);
+          batch.add('nosing', nose, coping);
+        }
+        prevH = hh;
       }
     }
-    /* the elevator leg between them */
-    var legBox = G.box(1.6, 24, 1.6, TILE.rust);
-    legBox.translate(1588, h(1588, 1250), 1250);
-    batch.add('steelRust', legBox, this.material('rust', { metalness: 0.4, roughness: 0.7 }));
-
-    /* ---- the bridges ---- */
-    var bc = town.bridges.concrete;
-    var bcB = h(bc.x, bc.y);
-    for (var side2 = -1; side2 <= 1; side2 += 2) {
-      var parapet = G.box(bc.w + 2, 0.95, 0.34, TILE.concrete);
-      parapet.translate(bc.x, bcB + 0.06, bc.y + side2 * (bc.h / 2));
-      batch.add('concrete', parapet, concrete);
-      for (var post3 = 0; post3 <= 4; post3++) {
-        var pst = G.box(0.4, 1.05, 0.46, TILE.concrete);
-        pst.translate(bc.x - bc.w / 2 + (post3 / 4) * bc.w, bcB + 0.06, bc.y + side2 * (bc.h / 2));
-        batch.add('concrete', pst, concrete);
-      }
-      /* the abutment wall going down to the water */
-      var wall2 = G.box(bc.w + 1, 3.4, 0.5, TILE.concrete);
-      wall2.translate(bc.x, bcB - 3.4, bc.y + side2 * (bc.h / 2 + 0.1));
-      batch.add('concrete', wall2, concrete);
-    }
-    var deckSlab = G.box(bc.w + 1.4, 0.55, bc.h + 0.4, TILE.concrete);
-    deckSlab.translate(bc.x, bcB - 0.55, bc.y);
-    batch.add('concrete', deckSlab, concrete);
-
-    /* the old stone bridge on County Road 9: one arch, mossy */
-    var bs = town.bridges.stone, bsB = h(bs.x, bs.y);
-    for (var s2 = -1; s2 <= 1; s2 += 2) {
-      var par2 = G.box(bs.w + 2.4, 0.82, 0.42, TILE.stone);
-      par2.translate(bs.x, bsB + 0.05, bs.y + s2 * (bs.h / 2));
-      batch.add('stone', par2, stone);
-      /* the arch ring, as voussoirs */
-      for (var v = 0; v <= 12; v++) {
-        var th = Math.PI * (v / 12);
-        var vx = bs.x - Math.cos(th) * (bs.w / 2 + 0.4);
-        var vy = bsB - 0.6 - Math.sin(th) * 2.4;
-        var vs = G.box(1.0, 0.7, 0.5, TILE.stone);
-        vs.rotateZ(-th + Math.PI / 2);
-        vs.translate(vx, vy, bs.y + s2 * (bs.h / 2));
-        batch.add('stone', vs, stone);
-      }
-      var wing = G.box(3.2, 3.2, 0.5, TILE.stone);
-      wing.translate(bs.x - bs.w / 2 - 1.2, bsB - 3.2, bs.y + s2 * (bs.h / 2));
-      batch.add('stone', wing, stone);
-    }
-    var bsDeck = G.box(bs.w + 1.2, 0.6, bs.h + 0.3, TILE.stone);
-    bsDeck.translate(bs.x, bsB - 0.6, bs.y);
-    batch.add('stone', bsDeck, stone);
-
-    /* ---- the Bend Mart canopy and pumps ---- */
-    var canB = h(1050, 962);
-    var canopy = G.box(15, 0.5, 9, TILE.concrete);
-    canopy.translate(1050, canB + 4.7, 962);
-    batch.add('canopy', canopy, this.flat('canopy', 0xe8e5da, 0.5, 0.1));
-    var canopyBand = G.box(15.3, 0.7, 9.3);
-    canopyBand.translate(1050, canB + 4.3, 962);
-    batch.add('canopyBand', canopyBand, this.flat('canopyBand', 0xb8452f, 0.55, 0.05));
-    for (var cpost = -1; cpost <= 1; cpost += 2) {
-      var cp = G.cyl(0.24, 0.24, 4.4, 8);
-      cp.translate(1050 + cpost * 5.6, canB, 962);
-      batch.add('canopy', cp, this.flat('canopy', 0xe8e5da, 0.5, 0.1));
-    }
-    for (var pump = -1; pump <= 1; pump += 2) {
-      var island = G.box(4.4, 0.18, 1.5, TILE.concrete);
-      island.translate(1050 + pump * 3.2, canB + 0.04, 962);
-      batch.add('concrete', island, concrete);
-      var pbody = G.box(1.1, 1.75, 0.62);
-      pbody.translate(1050 + pump * 3.2, canB + 0.22, 962);
-      batch.add('pump', pbody, this.flat('pumpBody', 0xd9d6cc, 0.5, 0.15));
-      var phead = G.box(1.15, 0.5, 0.66);
-      phead.translate(1050 + pump * 3.2, canB + 1.97, 962);
-      batch.add('pumpHead', phead, this.flat('pumpHead', 0x2c3138, 0.42, 0.3));
-    }
-
-    /* ---- the ballfield backstop ---- */
-    var bsX = 992, bsZ = 1252, bbB = h(bsX, bsZ);
-    for (var bp = 0; bp <= 6; bp++) {
-      var ang2 = -0.2 + (bp / 6) * 1.9;
-      var pxx = bsX + Math.cos(ang2) * 11, pzz = bsZ + Math.sin(ang2) * 11;
-      var bpost = G.cyl(0.08, 0.08, 4.2, 6);
-      bpost.translate(pxx, h(pxx, pzz), pzz);
-      batch.add('steelGalv', bpost, this.flat('galv', 0x9ea3a0, 0.5, 0.7));
-    }
-    /* the mesh itself, as a transparent plane */
-    var meshTex = this.chainlinkTexture();
-    for (var mseg = 0; mseg < 6; mseg++) {
-      var a1 = -0.2 + (mseg / 6) * 1.9, a2 = -0.2 + ((mseg + 1) / 6) * 1.9;
-      var x1 = bsX + Math.cos(a1) * 11, z1 = bsZ + Math.sin(a1) * 11;
-      var x2 = bsX + Math.cos(a2) * 11, z2 = bsZ + Math.sin(a2) * 11;
-      var len = U.dist(x1, z1, x2, z2);
-      var panel = new T.Mesh(new T.PlaneGeometry(len, 4.0), meshTex);
-      panel.position.set((x1 + x2) / 2, h((x1 + x2) / 2, (z1 + z2) / 2) + 2.0, (z1 + z2) / 2);
-      panel.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-      this.root.add(panel);
-    }
-
-    /* ---- the framed-up flagpole, the hoops, the porta-john ---- */
-    var fp = G.cyl(0.07, 0.09, 8.5, 8);
-    fp.translate(844, h(844, 1166), 1166);
-    batch.add('steelGalv', fp, this.flat('galv', 0x9ea3a0, 0.5, 0.7));
-    var pj = G.box(1.2, 2.3, 1.2);
-    pj.translate(1176, h(1176, 1238), 1238);
-    batch.add('portajohn', pj, this.flat('pj', 0x4a6a58, 0.7, 0));
   };
 
-  /* chain link, as an alpha-tested texture */
-  /* Chain link, as a colour map plus an alpha map for the same reason the
-     grass needs one: a canvas cannot carry a clean cutout in its own alpha. */
   S.chainlinkTexture = function () {
     if (this._chain) return this._chain;
     var SZ = 64;
@@ -783,15 +666,15 @@
   S.buildStructures = function () {
     var batch = new G.Batch();
     var i;
-    for (i = 0; i < this.town.lots.length; i++) this.buildHouse(batch, this.town.lots[i], false);
-
-    /* your rental, which is a lot like the others */
-    var home = this.town.home;
-    this.buildHouse(batch, {
-      id: '__home', house: home.house, siding: home.siding, roofColor: home.roofColor,
-      storeys: 1, style: 'cottage', porch: 'full', skirt: false, number: home.number,
-      nx: 0, ny: 1, features: { ac: { x: 0, y: 0 } }
-    }, true);
+    /* You rent the back room of number 6, so your place is one of the
+       eighteen rather than a nineteenth house of its own -- the lot whose id
+       matches town.home.lot is built as home, which is what gives its windows
+       their own lighting group. */
+    var homeLot = this.town.home.lot;
+    for (i = 0; i < this.town.lots.length; i++) {
+      var l = this.town.lots[i];
+      this.buildHouse(batch, l, l.id === homeLot);
+    }
 
     for (i = 0; i < this.town.buildings.length; i++) this.buildBuilding(batch, this.town.buildings[i]);
     this.buildLandmarks(batch);

@@ -272,7 +272,10 @@
       map: gt.map, alphaMap: gt.alpha, alphaTest: 0.42, side: T.FrontSide,
       roughness: 0.92, metalness: 0
     });
-    var COUNT = 6000;
+    /* Almost nothing here is lawn. The quarter is stone, and what grows in
+       it grows out of the gaps between the stones, so the tuft count is a
+       tenth of what a township of mown yards needed. */
+    var COUNT = 900;
     var inst = new T.InstancedMesh(tuft, mat, COUNT);
     inst.castShadow = false;
     /* no shadow receive: a blade of grass is two centimetres wide and the
@@ -283,7 +286,7 @@
     inst.frustumCulled = false;
     whiteInstanceColours(inst);
     this.root.add(inst);
-    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 13 };
+    this.grass = { mesh: inst, count: COUNT, lastX: 1e9, lastZ: 1e9, radius: 11 };
 
     /* the taller stuff that grows where nobody mows */
     var wt = this.grassTexture(true);
@@ -291,7 +294,7 @@
       map: wt.map, alphaMap: wt.alpha, alphaTest: 0.42, side: T.FrontSide,
       roughness: 0.92, metalness: 0
     });
-    var WCOUNT = 1800;
+    var WCOUNT = 500;
     var weeds = new T.InstancedMesh(tuft, weedMat, WCOUNT);
     weeds.castShadow = false;
     weeds.receiveShadow = false;
@@ -299,7 +302,7 @@
     weeds.frustumCulled = false;
     whiteInstanceColours(weeds);
     this.root.add(weeds);
-    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 18 };
+    this.weeds = { mesh: weeds, count: WCOUNT, lastX: 1e9, lastZ: 1e9, radius: 14 };
   };
 
   /* Redistribute the tufts when you have walked far enough to notice, a slice
@@ -343,9 +346,10 @@
         var terr = town.terrainAt(x, z);
         /* nobody mows the ditches, the verges or the grade; everybody mows
            their yard, so the tall stuff stays out of them */
-        var ok = tall
-          ? (terr === 'field' || terr === 'ballast')
-          : (terr === 'grass' || terr === 'woods' || terr === 'field');
+        /* weeds out of the bare shelf and the unswept edges; nothing at all
+           on the swept stone of an alley or the flags of the square */
+        var ok = tall ? (terr === 'rock')
+          : (terr === 'rock' || terr === 'wall');
         if (!ok || town.isBlocked(x, z)) {
           m.makeScale(0, 0, 0);
           m.setPosition(0, -50, 0);
@@ -380,59 +384,75 @@
     }
   };
 
-  /* ---------------- poles, wires, lamps ---------------- */
+  /* ---------------- wires, lamps ---------------- */
 
+  /* No poles. In a quarter this old the supply is bolted to the walls and
+     thrown across the alleys, which is both how it looks and why the errand
+     about counting the wires exists. */
   S.buildPoles = function (batch) {
     var town = this.town, h = this.h;
-    var poleMat = this.material('wood', { color: 0x8a7a62 });
     var wireMat = this.flat('wire', 0x2c2e2c, 0.85, 0.2);
-    var i;
-    for (i = 0; i < town.poles.length; i++) {
-      var p = town.poles[i];
-      var b = h(p.x, p.y);
-      var pg = G.cyl(0.14, 0.19, 9.4, 8, TILE.wood);
-      pg.translate(p.x, b, p.y);
-      batch.add('poles', pg, poleMat);
-      var arm = G.box(2.8, 0.13, 0.13, TILE.wood);
-      arm.translate(p.x, b + 8.5, p.y);
-      batch.add('poles', arm, poleMat);
-      if (p.transformer) {
-        var tf = G.cyl(0.35, 0.35, 0.85, 10);
-        tf.translate(p.x + 0.42, b + 7.0, p.y);
-        batch.add('transformer', tf, this.flat('transformer', 0x8a8d86, 0.6, 0.45));
-      }
-      if (p.prev) {
-        var a = new T.Vector3(p.prev.x, h(p.prev.x, p.prev.y) + 8.5, p.prev.y);
-        var c = new T.Vector3(p.x, b + 8.5, p.y);
-        if (a.distanceTo(c) < 130) {
-          for (var w = -1; w <= 1; w++) {
-            var aa = a.clone(), cc = c.clone();
-            aa.x += w * 0.9; cc.x += w * 0.9;
-            batch.add('wires', G.wire(aa, cc, 1.5 + Math.abs(w) * 0.2, 0.028, 7), wireMat);
-          }
-          var la = a.clone(), lc = c.clone();
-          la.y -= 1.9; lc.y -= 1.9;
-          batch.add('wires', G.wire(la, lc, 2.1, 0.035, 7), wireMat);
+    var boxMat = this.flat('meterbox', 0x8e8a7e, 0.7, 0.25);
+    var braMat = this.flat('bracket', 0x4a453e, 0.6, 0.5);
+    var rng = new ER.RNG('wires');
+    var i, j;
+
+    /* a run of wire across each alley, wall to wall, sagging */
+    for (i = 0; i < town.roads.length; i++) {
+      var rd = town.roads[i];
+      var pts = rd.pts.map(function (q) { return [q[0], q[1]]; });
+      var len = ER.poly.length(pts);
+      for (var s = 3.0; s < len - 2.0; s += rng.float(5.5, 9.0)) {
+        var at = ER.poly.pointAt(pts, s);
+        var nrm = ER.poly.normal(pts, at.seg);
+        var reach = rd.width / 2 + 0.55;
+        var a = new T.Vector3(at.x + nrm.x * reach, h(at.x, at.y) + rng.float(3.6, 5.2), at.y + nrm.y * reach);
+        var b = new T.Vector3(at.x - nrm.x * reach, a.y + rng.float(-0.3, 0.3), at.y - nrm.y * reach);
+        var n = rng.int(2, 5);
+        for (j = 0; j < n; j++) {
+          var aa = a.clone(), bb = b.clone();
+          aa.y -= j * 0.13; bb.y -= j * 0.13;
+          batch.add('wires', G.wire(aa, bb, 0.22 + j * 0.04, 0.022, 6), wireMat);
         }
       }
     }
 
-    /* streetlamps: cobra heads on the built-up blocks */
-    var lampPole = this.flat('lampPole', 0x8e9390, 0.5, 0.6);
-    var headGeos = [];
+    /* and the meter boxes that feed them, on the wall by each door */
+    for (i = 0; i < town.lots.length; i++) {
+      var l = town.lots[i];
+      var mp = town.props['meter_' + l.id];
+      if (!mp) continue;
+      var bx = G.box(0.3, 0.42, 0.16);
+      bx.translate(mp.x, h(mp.x, mp.y) + 1.55, mp.y);
+      batch.add('meterbox', bx, boxMat);
+    }
+
+    /* the brackets the alley lamps hang off */
+    for (i = 0; i < town.lamps.length; i++) {
+      var lp = town.lamps[i];
+      var arm = G.box(0.5, 0.05, 0.05);
+      arm.translate(lp.x, h(lp.x, lp.y) + 3.15, lp.y);
+      batch.add('bracket', arm, braMat);
+    }
+  };
+
+  /* Alley lanterns on wall brackets, about three metres up. A cobra head on
+     a seven-metre mast would be absurd in an alley two metres wide. */
+  S.buildLamps = function (batch) {
+    var town = this.town, h = this.h;
+    var lampMat = this.flat('lampIron', 0x3e3a34, 0.55, 0.5);
+    var i;
     for (i = 0; i < town.lamps.length; i++) {
       var lp = town.lamps[i];
       var lb = h(lp.x, lp.y);
-      var mast = G.cyl(0.085, 0.13, 7.6, 8);
-      mast.translate(lp.x, lb, lp.y);
-      batch.add('lampPole', mast, lampPole);
-      var armL = G.box(1.7, 0.1, 0.1);
-      armL.translate(lp.x + 0.85, lb + 7.5, lp.y);
-      batch.add('lampPole', armL, lampPole);
-      var housing = G.box(0.62, 0.2, 0.34);
-      housing.translate(lp.x + 1.7, lb + 7.32, lp.y);
-      batch.add('lampPole', housing, lampPole);
-      this.lamps.push({ def: lp, x: lp.x + 1.7, y: lb + 7.24, z: lp.y, dying: lp.dying, phase: lp.phase });
+      /* a little four-sided lantern, hung under the bracket */
+      var hood = G.cyl(0.13, 0.20, 0.10, 4);
+      hood.translate(lp.x, lb + 3.12, lp.y);
+      batch.add('lampIron', hood, lampMat);
+      var cage = G.cyl(0.17, 0.13, 0.26, 4);
+      cage.translate(lp.x, lb + 2.86, lp.y);
+      batch.add('lampIron', cage, lampMat);
+      this.lamps.push({ def: lp, x: lp.x, y: lb + 2.92, z: lp.y, dying: lp.dying, phase: lp.phase });
     }
 
     /* the glowing lenses, instanced so they can flicker independently */
@@ -733,58 +753,9 @@
       }
     }
 
-    /* gravestones */
-    var stoneMat = this.material('stone', { color: 0xcfcbc0 });
-    for (i = 0; i < town.cemetery.graves.length; i++) {
-      var g = town.cemetery.graves[i];
-      var gb = h(g.x, g.y);
-      var xf2 = G.mat4(g.x, gb, g.y, g.lean * 2);
-      if (g.style === 'flat') {
-        var slab = G.box(0.9, 0.12, 0.5, TILE.stone);
-        batch.add('gravestone', slab, stoneMat, xf2);
-      } else if (g.style === 'obelisk') {
-        var plinth = G.box(0.62, 0.3, 0.62, TILE.stone);
-        batch.add('gravestone', plinth, stoneMat, xf2);
-        var shaft = G.box(0.34, 1.9, 0.34, TILE.stone);
-        shaft.translate(0, 0.3, 0);
-        batch.add('gravestone', shaft, stoneMat, xf2);
-        var tip = new T.ConeGeometry(0.26, 0.4, 4);
-        tip.rotateY(Math.PI / 4);
-        tip.translate(0, 2.4, 0);
-        batch.add('gravestone', tip, stoneMat, xf2);
-      } else if (g.style === 'lamb') {
-        var base2 = G.box(0.6, 0.34, 0.42, TILE.stone);
-        batch.add('gravestone', base2, stoneMat, xf2);
-        var bodyL = new T.SphereGeometry(0.2, 10, 8);
-        bodyL.scale(1.4, 0.9, 0.9);
-        bodyL.translate(0, 0.5, 0);
-        batch.add('gravestone', bodyL, stoneMat, xf2);
-        var headL = new T.SphereGeometry(0.11, 8, 6);
-        headL.translate(-0.24, 0.62, 0);
-        batch.add('gravestone', headL, stoneMat, xf2);
-      } else {
-        var bs2 = G.box(0.78, 0.18, 0.34, TILE.stone);
-        batch.add('gravestone', bs2, stoneMat, xf2);
-        var tab = G.box(0.6, 0.92, 0.14, TILE.stone);
-        tab.translate(0, 0.18, 0);
-        batch.add('gravestone', tab, stoneMat, xf2);
-        if (g.style === 'tablet') {
-          var arch = new T.CylinderGeometry(0.3, 0.3, 0.14, 12, 1, false, 0, Math.PI);
-          arch.rotateX(Math.PI / 2);
-          arch.rotateY(Math.PI / 2);
-          arch.translate(0, 1.10, 0);
-          batch.add('gravestone', arch, stoneMat, xf2);
-        }
-        /* the engraving, which is what you are here to trace */
-        var eTex = G.signTexture([g.last.toUpperCase(), g.first, g.born + '–' + g.died],
-          { w: 256, h: 384, bg: '#00000000', fg: 'rgba(52,54,50,0.72)', size: 44 });
-        var face = new T.Mesh(new T.PlaneGeometry(0.5, 0.74),
-          new T.MeshStandardMaterial({ map: eTex, transparent: true, roughness: 0.85 }));
-        face.position.set(g.x, gb + 0.62, g.y + 0.08);
-        face.rotation.y = g.lean * 2;
-        this.root.add(face);
-      }
-    }
+    /* No gravestones. The quarter buries its dead up the hill and out of
+       the world; what it has instead is a niche with a Virgin in it, which
+       buildProps puts in the square. */
   };
 
   /* ---------------- road signs ---------------- */
@@ -966,13 +937,297 @@
       batch.add('brass', tap, self.flat('brass', 0xb08d4a, 0.35, 0.8), G.mat4(a.x, a.y, a.z, 0));
     })();
 
-    /* the storage-door tops the dust lives on, and the tar bubble */
+    /* the tar on the slipway */
     (function () {
-      var a = at('tar_bubble'); if (!a) return;
+      var a = at('quay_tar'); if (!a) return;
       var blob2 = new T.SphereGeometry(0.4, 10, 5, 0, 6.2832, 0, Math.PI / 2);
       blob2.scale(1, 0.18, 1);
       batch.add('tar', blob2, self.flat('tar', 0x1d1b19, 0.35, 0), G.mat4(a.x, a.y + 0.04, a.z, 0));
     })();
+
+    /* ================================================================== *
+     *  the quarter's own furniture. Everything below hangs off a prop id,
+     *  so if a prop moves its geometry moves with it, and if a prop is
+     *  removed its geometry quietly stops existing.
+     * ================================================================== */
+
+    var terra = this.flat('terracotta', 0xa8603f, 0.72, 0.05);
+    var tankMat = this.flat('tankblack', 0x2a2b2c, 0.78, 0.05);
+    var dishMat = this.flat('dishwhite', 0xd9d6cc, 0.6, 0.12);
+    var brass2 = this.flat('brass2', 0x9a7c42, 0.42, 0.72);
+    var iron2 = this.flat('iron2', 0x42403a, 0.6, 0.5);
+    var blue = this.flat('boatblue', 0x2f6f8f, 0.52, 0.1);
+    var netMat = this.flat('net', 0x6d7a5e, 0.8, 0.05);
+
+    /* --- pots of geraniums by every door --- */
+    town.lots.forEach(function (l) {
+      var a = at('pots_' + l.id); if (!a) return;
+      var n = Math.min(6, l.features.pots || 3);
+      var rp = new ER.RNG('pots' + l.id);
+      for (var i = 0; i < n; i++) {
+        var ox = (i - (n - 1) / 2) * 0.3, oz = rp.float(-0.12, 0.12);
+        var pot = G.cyl(0.11, 0.085, 0.2, 8);
+        pot.translate(ox, 0.1, oz);
+        batch.add('terracotta', pot, terra, G.mat4(a.x, a.y, a.z, 0));
+        var bush = new T.SphereGeometry(0.13, 6, 4);
+        bush.scale(1, rp.float(0.7, 1.3), 1);
+        bush.translate(ox, 0.26, oz);
+        batch.add('geranium', bush, self.flat('geranium', 0x4f6f3a, 0.9, 0), G.mat4(a.x, a.y, a.z, 0));
+      }
+    });
+
+    /* --- the black water tanks, which is what the skyline actually is --- */
+    town.lots.forEach(function (l) {
+      if (!P['tank_' + l.id]) return;
+      var cx = l.rect[0] + l.rect[2] * 0.5, cz = l.rect[1] + l.rect[3] * 0.65;
+      var base = h(cx, cz) + 0.34 + 3.1 * (l.storeys || 1) + 0.1;
+      var t2 = G.cyl(0.45, 0.45, 0.8, 10);
+      t2.translate(cx, base, cz);
+      batch.add('tankblack', t2, tankMat);
+      var cap = G.cyl(0.16, 0.16, 0.08, 8);
+      cap.translate(cx, base + 0.82, cz);
+      batch.add('tankblack', cap, tankMat);
+    });
+
+    /* --- satellite dishes, all pointing the same way, as the errand says --- */
+    town.lots.forEach(function (l) {
+      if (!P['dish_' + l.id]) return;
+      var cx = l.rect[0] + l.rect[2] * 0.74, cz = l.rect[1] + l.rect[3] * 0.24;
+      var base = h(cx, cz) + 0.34 + 3.1 * (l.storeys || 1) - 0.45;
+      var d2 = new T.SphereGeometry(0.34, 10, 6, 0, 6.2832, 0, 0.62);
+      d2.rotateX(-1.05);
+      d2.translate(cx, base, cz);
+      batch.add('dishwhite', d2, dishMat);
+      var arm2 = G.cyl(0.02, 0.02, 0.3, 5);
+      arm2.rotateX(-0.9);
+      arm2.translate(cx, base + 0.12, cz + 0.16);
+      batch.add('dishwhite', arm2, dishMat);
+    });
+
+    /* --- the nets, the boat, the anchor --- */
+    (function () {
+      var a = at('quay_nets'); if (!a) return;
+      for (var i = 0; i < 3; i++) {
+        var heap = new T.SphereGeometry(0.44, 8, 5);
+        heap.scale(1.5, 0.42, 1.1);
+        heap.translate(i * 0.7 - 0.7, 0.16, 0);
+        batch.add('net', heap, netMat, G.mat4(a.x, a.y, a.z, 0.3));
+      }
+    }());
+    (function () {
+      var a = at('quay_boat'); if (!a) return;
+      var hull = new T.SphereGeometry(1.5, 12, 7, 0, 6.2832, 0, Math.PI / 2);
+      hull.scale(0.42, 0.5, 1.0);
+      hull.rotateX(Math.PI);
+      hull.translate(0, 0.62, 0);
+      batch.add('boatblue', hull, blue, G.mat4(a.x, a.y, a.z, 0.5));
+      var bench = G.box(0.9, 0.06, 0.2);
+      bench.translate(0, 0.58, 0);
+      batch.add('propWood', bench, wood, G.mat4(a.x, a.y, a.z, 0.5));
+    }());
+    (function () {
+      var a = at('quay_anchor'); if (!a) return;
+      var shank = G.cyl(0.05, 0.05, 1.0, 6);
+      shank.rotateZ(0.35);
+      shank.translate(0, 0.4, 0);
+      batch.add('iron2', shank, iron2, G.mat4(a.x, a.y, a.z, 0));
+      var arms = new T.TorusGeometry(0.34, 0.05, 5, 12, Math.PI);
+      arms.rotateZ(0.35);
+      arms.translate(0.16, 0.12, 0);
+      batch.add('iron2', arms, iron2, G.mat4(a.x, a.y, a.z, 0));
+    }());
+
+    /* --- the soap pyramid, the crates, the chairs, the arghile --- */
+    (function () {
+      var a = at('sabon_stack'); if (!a) return;
+      for (var r = 0; r < 4; r++) {
+        var n2 = 4 - r;
+        for (var c2 = 0; c2 < n2; c2++) {
+          var bar = G.box(0.13, 0.07, 0.09);
+          bar.translate((c2 - (n2 - 1) / 2) * 0.15, 0.9 + r * 0.075, 0);
+          batch.add('soap', bar, self.flat('soap', 0xbcb582, 0.82, 0), G.mat4(a.x, a.y, a.z, 0));
+        }
+      }
+    }());
+    ['lemonade_crates', 'dukkan_crates'].forEach(function (id) {
+      var a = at(id); if (!a) return;
+      for (var i = 0; i < 3; i++) {
+        var crate = G.box(0.46, 0.24, 0.32);
+        crate.translate((i % 2) * 0.1, 0.12 + i * 0.25, 0);
+        batch.add('crate', crate, self.flat('crate', 0x8c6f45, 0.85, 0), G.mat4(a.x, a.y, a.z, i * 0.2));
+        if (id === 'lemonade_crates') {
+          for (var k = 0; k < 5; k++) {
+            var lem = new T.SphereGeometry(0.045, 6, 4);
+            lem.scale(1, 0.85, 1);
+            lem.translate((k - 2) * 0.09, 0.26 + i * 0.25, 0.05);
+            batch.add('lemonfruit', lem, self.flat('lemonfruit', 0xd8c84a, 0.6, 0), G.mat4(a.x, a.y, a.z, i * 0.2));
+          }
+        }
+      }
+    });
+    (function () {
+      var a = at('qahwe_chairs'); if (!a) return;
+      var rc = new ER.RNG('chairs');
+      for (var i = 0; i < 4; i++) {
+        var xf2 = G.mat4(a.x + rc.float(-0.7, 0.7), a.y, a.z + rc.float(-0.5, 0.5), rc.float(0, 6.2832));
+        var seat = G.box(0.38, 0.05, 0.38);
+        seat.translate(0, 0.42, 0);
+        batch.add('chair', seat, plastic, xf2);
+        var back = G.box(0.38, 0.4, 0.05);
+        back.translate(0, 0.62, -0.17);
+        batch.add('chair', back, plastic, xf2);
+        for (var lg = 0; lg < 4; lg++) {
+          var leg = G.cyl(0.018, 0.018, 0.42, 5);
+          leg.translate(((lg % 2) - 0.5) * 0.3, 0.21, (((lg >> 1) % 2) - 0.5) * 0.3);
+          batch.add('chair', leg, plastic, xf2);
+        }
+      }
+    }());
+    (function () {
+      var a = at('qahwe_arghile'); if (!a) return;
+      var stool = G.cyl(0.14, 0.16, 0.4, 8);
+      stool.translate(0, 0.2, 0);
+      batch.add('propWood', stool, wood, G.mat4(a.x, a.y, a.z, 0));
+      var jar = new T.SphereGeometry(0.11, 8, 6);
+      jar.scale(1, 1.2, 1);
+      jar.translate(0, 0.52, 0);
+      batch.add('arghileglass', jar, self.flat('arghileglass', 0x6a4a6a, 0.25, 0.3), G.mat4(a.x, a.y, a.z, 0));
+      var stem = G.cyl(0.022, 0.03, 0.5, 6);
+      stem.translate(0, 0.86, 0);
+      batch.add('brass2', stem, brass2, G.mat4(a.x, a.y, a.z, 0));
+      var bowl2 = G.cyl(0.055, 0.04, 0.09, 8);
+      bowl2.translate(0, 1.14, 0);
+      batch.add('terracotta', bowl2, terra, G.mat4(a.x, a.y, a.z, 0));
+    }());
+
+    /* --- gas canisters, the generator, the bank of meters --- */
+    (function () {
+      var a = at('zaroub_gas'); if (!a) return;
+      for (var i = 0; i < 5; i++) {
+        var can = G.cyl(0.15, 0.15, 0.55, 10);
+        can.translate((i - 2) * 0.34, 0.28, 0);
+        batch.add('gascan', can, self.flat('gascan', 0xa8563f, 0.6, 0.35), G.mat4(a.x, a.y, a.z, 0));
+      }
+    }());
+    (function () {
+      var a = at('souk_generator'); if (!a) return;
+      var box2 = G.box(1.1, 0.8, 0.7);
+      box2.translate(0, 0.4, 0);
+      batch.add('genbox', box2, self.flat('genbox', 0x7a6f52, 0.7, 0.3), G.mat4(a.x, a.y, a.z, 0));
+      var pipe2 = G.cyl(0.05, 0.05, 0.7, 6);
+      pipe2.translate(0.42, 1.05, -0.2);
+      batch.add('iron2', pipe2, iron2, G.mat4(a.x, a.y, a.z, 0));
+    }());
+    (function () {
+      var a = at('souk_meters'); if (!a) return;
+      for (var i = 0; i < 6; i++) {
+        var m2 = G.box(0.22, 0.3, 0.13);
+        m2.translate(((i % 3) - 1) * 0.26, 1.35 + Math.floor(i / 3) * 0.36, 0);
+        batch.add('meterbox', m2, self.flat('meterbox', 0x8e8a7e, 0.7, 0.25), G.mat4(a.x, a.y, a.z, 0));
+      }
+    }());
+
+    /* --- three cats. Each one is a small warm lump that does not move,
+           because a cat that moved would be a different kind of project. --- */
+    ['souk_cat_blue', 'square_cat', 'quay_cat'].forEach(function (id, ci) {
+      var a = at(id); if (!a) return;
+      var coat = self.flat('cat' + ci, [0x9a8f78, 0xb8ab94, 0x6a6258][ci], 0.9, 0);
+      var xf2 = G.mat4(a.x, a.y, a.z, ci * 1.7);
+      var body = new T.SphereGeometry(0.17, 8, 6);
+      body.scale(1.7, 0.85, 0.9);
+      body.translate(0, 0.16, 0);
+      batch.add('cat' + ci, body, coat, xf2);
+      var head = new T.SphereGeometry(0.1, 7, 5);
+      head.translate(0.26, 0.24, 0);
+      batch.add('cat' + ci, head, coat, xf2);
+      var tail = G.cyl(0.02, 0.03, 0.34, 5);
+      tail.rotateZ(1.2);
+      tail.translate(-0.32, 0.18, 0);
+      batch.add('cat' + ci, tail, coat, xf2);
+    });
+
+    /* --- the moped, the Mercedes, the posters, the well lid --- */
+    (function () {
+      var a = at('souk_moped'); if (!a) return;
+      var xf2 = G.mat4(a.x, a.y, a.z, 1.2);
+      var frame = G.box(1.1, 0.16, 0.22);
+      frame.translate(0, 0.5, 0);
+      batch.add('moped', frame, self.flat('moped', 0x6a2f2f, 0.5, 0.4), xf2);
+      for (var w2 = 0; w2 < 2; w2++) {
+        var wheel = new T.TorusGeometry(0.21, 0.05, 5, 12);
+        wheel.translate((w2 - 0.5) * 0.9, 0.22, 0);
+        batch.add('tyre2', wheel, self.flat('tyre2', 0x1e1f1e, 0.9, 0), xf2);
+      }
+      var seat2 = G.box(0.4, 0.09, 0.22);
+      seat2.translate(-0.2, 0.63, 0);
+      batch.add('moped', seat2, self.flat('mopedseat', 0x2a2724, 0.7, 0.1), xf2);
+    }());
+    (function () {
+      var a = at('souk_taxi'); if (!a) return;
+      var xf2 = G.mat4(a.x, a.y, a.z, 1.55);
+      var body = G.box(4.4, 0.78, 1.72);
+      body.translate(0, 0.72, 0);
+      batch.add('merc', body, self.flat('merc', 0xcfc8b4, 0.38, 0.55), xf2);
+      var cabin = G.box(2.3, 0.62, 1.6);
+      cabin.translate(-0.1, 1.38, 0);
+      batch.add('merc', cabin, self.flat('merc', 0xcfc8b4, 0.38, 0.55), xf2);
+      var glass2 = G.box(2.26, 0.56, 1.62);
+      glass2.translate(-0.1, 1.4, 0);
+      batch.add('mercglass', glass2, self.flat('mercglass', 0x1b2228, 0.1, 0.5), xf2);
+      for (var w3 = 0; w3 < 4; w3++) {
+        var wh = new T.TorusGeometry(0.31, 0.11, 6, 12);
+        wh.rotateY(Math.PI / 2);
+        wh.translate(((w3 % 2) - 0.5) * 2.8, 0.33, (((w3 >> 1) % 2) - 0.5) * 1.6);
+        batch.add('tyre2', wh, self.flat('tyre2', 0x1e1f1e, 0.9, 0), xf2);
+      }
+    }());
+    (function () {
+      var a = at('souk_posters'); if (!a) return;
+      var rp2 = new ER.RNG('posters');
+      for (var i = 0; i < 5; i++) {
+        var sheet = G.box(0.34, 0.48, 0.008);
+        sheet.translate(rp2.float(-0.5, 0.5), 1.5 + rp2.float(-0.3, 0.3), 0);
+        batch.add('poster' + (i % 3), sheet,
+          self.flat('poster' + (i % 3), [0xb8b0a0, 0xa89a86, 0xc6bca8][i % 3], 0.9, 0),
+          G.mat4(a.x, a.y, a.z, 0));
+      }
+    }());
+    (function () {
+      var a = at('well_lid'); if (!a) return;
+      var lid = G.cyl(0.42, 0.42, 0.06, 12);
+      lid.translate(0, 0.04, 0);
+      batch.add('iron2', lid, iron2, G.mat4(a.x, a.y, a.z, 0));
+    }());
+    ['square_bench', 'bench_landing'].forEach(function (id) {
+      var a = at(id); if (!a) return;
+      var slab = G.box(1.6, 0.16, 0.42);
+      slab.translate(0, 0.42, 0);
+      batch.add('benchstone', slab, self.material('sandstone', {}), G.mat4(a.x, a.y, a.z, 0));
+      for (var e = 0; e < 2; e++) {
+        var leg2 = G.box(0.22, 0.42, 0.38);
+        leg2.translate((e - 0.5) * 1.2, 0.21, 0);
+        batch.add('benchstone', leg2, self.material('sandstone', {}), G.mat4(a.x, a.y, a.z, 0));
+      }
+    });
+    (function () {
+      var a = at('mahjour_tiles'); if (!a) return;
+      var rt = new ER.RNG('tileheap');
+      for (var i = 0; i < 14; i++) {
+        var tl = G.box(0.3, 0.035, 0.18);
+        tl.translate(rt.float(-0.5, 0.5), 0.02 + i * 0.03, rt.float(-0.4, 0.4));
+        var xf3 = G.mat4(a.x, a.y, a.z, rt.float(0, 3.14));
+        batch.add('terracotta', tl, terra, xf3);
+      }
+    }());
+    (function () {
+      var a = at('square_shrine'); if (!a) return;
+      var niche = G.box(0.5, 0.7, 0.28);
+      niche.translate(0, 1.3, 0);
+      batch.add('benchstone', niche, self.material('sandstone', {}), G.mat4(a.x, a.y, a.z, 0));
+      var figure = G.cyl(0.05, 0.07, 0.22, 7);
+      figure.translate(0, 1.2, 0.02);
+      batch.add('virgin', figure, self.flat('virgin', 0xd8dce4, 0.7, 0.05), G.mat4(a.x, a.y, a.z, 0));
+    }());
   };
 
   /* plant patches: dandelions, mint, milkweed, cattails, acorns */
@@ -1065,6 +1320,7 @@
   S.buildScatter = function () {
     var batch = new G.Batch();
     this.buildPoles(batch);
+    this.buildLamps(batch);
     this.buildFences(batch);
     this.buildYardStuff(batch);
     this.buildSigns(batch);
