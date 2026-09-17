@@ -510,6 +510,28 @@ if (ER.populate) {
       }
       ok(civil > 50, 'day ' + day + ': civil twilight lasts only ' + civil +
         ' minutes across both ends of the day');
+
+      /* The sun rises in the east and sets in the west, which in this town
+         means it sets over the sea. Azimuth is degrees east of due south, so
+         it starts positive and ends negative, and the whole arc is monotone.
+         It ran the other way for a while: the sunset was inland, behind the
+         souk, and the one view the quarter has never got lit. */
+      var azRise = sc.sunAzimuth(sr), azSet = sc.sunAzimuth(ss);
+      ok(azRise > 60, 'day ' + day + ': the sun rises in the east, not at azimuth ' +
+        azRise.toFixed(0));
+      ok(azSet < -60, 'day ' + day + ': the sun sets in the west, over the sea, not at azimuth ' +
+        azSet.toFixed(0));
+      ok(Math.abs(sc.sunAzimuth((sr + ss) / 2)) < 1,
+        'day ' + day + ': the noon sun should be due south, not at azimuth ' +
+        sc.sunAzimuth((sr + ss) / 2).toFixed(1));
+      var azPrev = sc.sunAzimuth(sr), backwards = 0;
+      for (var a = sr * 60; a <= ss * 60; a++) {
+        var azNow = sc.sunAzimuth(a / 60);
+        if (azNow > azPrev + 1e-9) backwards++;
+        azPrev = azNow;
+      }
+      ok(backwards === 0, 'day ' + day + ': the sun went back east ' + backwards +
+        ' times during the day');
     }
     /* and the phase the clock names must match where the sun actually is */
     sc.day = 1;

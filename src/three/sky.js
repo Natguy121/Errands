@@ -218,14 +218,13 @@
 
   /* where the sun is, given the clock. a plausible arc, not an almanac. */
   Sky.prototype.sunVector = function (clock) {
-    var sr = clock.sunrise(), ss = clock.sunset();
     var h = clock.hourFloat();
-    var dayLen = ss - sr;
     /* the clock owns the solar model, so the sky and the errand gates that
        key off dusk cannot drift apart */
     var elev = clock.sunElevation(h);
-    /* azimuth: rises in the east (+x), sets in the west (-x), south at noon (+z here) */
-    var az = U.lerp(-100, 100, U.clamp((h - sr) / dayLen, -0.6, 1.6)) * Math.PI / 180;
+    /* Azimuth in degrees east of due south, from the clock, which owns the
+       whole solar model: +x is east, -x is west, +z is south. */
+    var az = clock.sunAzimuth(h) * Math.PI / 180;
     var e = elev * Math.PI / 180;
     return {
       elev: elev,

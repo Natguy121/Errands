@@ -402,6 +402,16 @@ the alleys were too narrow and the vantage points were inside the houses.
 They are 1.3 to 8.4 m clear, which is what an alley is. Before drawing a
 conclusion from a frame, check that the camera is pointing where you meant.
 
+**The sun rose in the west.** The azimuth lerp ran from -100 to +100 degrees
+across the day, and the comment above it said the opposite. The elevations
+were right, so the day had the correct length and the dusk lasted the correct
+number of minutes; only the compass was mirrored. In a town whose entire west
+side is the Mediterranean, that meant the sunset happened inland behind the
+souk and the one view the place has was the one thing the light never touched.
+The azimuth now lives on the clock beside the elevation, where `test/run.js`
+holds it to rising in the east, setting in the west, being due south at solar
+noon and never once going back the way it came.
+
 ## Deliberate omissions
 
 - **No interiors.** Counters, bins and dryers are interacted with from the

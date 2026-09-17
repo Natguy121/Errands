@@ -129,6 +129,19 @@
      the thirty-five an offset cosine was producing. The sky reads this; it
      used to keep a second, disagreeing copy of it. */
   var LAT = 41.5 * Math.PI / 180;
+  /* Which way round the compass, in degrees east of due south: +90 at
+     sunrise, 0 at solar noon, -90 at sunset. The sky module used to work
+     this out itself and had the lerp backwards, so the sun rose over the
+     souk and set inland — which in a town whose west side is the sea meant
+     the sunset never touched the water. It lives here now, next to the
+     elevation, so a test can hold it to rising in the east. */
+  Clock.prototype.sunAzimuth = function (hourFloat) {
+    var h = hourFloat === undefined ? this.hourFloat() : hourFloat;
+    var sr = this.sunrise(), ss = this.sunset();
+    var through = U.clamp((h - sr) / (ss - sr), -0.6, 1.6);
+    return U.lerp(100, -100, through);
+  };
+
   Clock.prototype.sunElevation = function (hourFloat) {
     var h = hourFloat === undefined ? this.hourFloat() : hourFloat;
     var sr = this.sunrise(), ss = this.sunset();
