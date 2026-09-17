@@ -149,24 +149,24 @@ src/
                         topography, collision grid, resident walk graph
     residents.js        the thirty, their routines and their dialogue
   quest/
-    items.js            71 items, 46 verbs, two shops
-    pool.js / pool2.js  60 errand templates
+    items.js            the quarter's items and verbs, and five shops
+    pool.js / pool2.js  70 errand templates
     director.js         issues one, watches it, issues another
   three/
     materials.js        every texture generated at load, with normal and
                         roughness maps derived from its own height field
-    geom.js             ribbons that follow the ground, gable roofs, batching
+    geom.js             ribbons that follow the ground, roofs, arches, batching
     sky.js              sun, moon, stars, cloud; hands out the scene lighting
     world3d.js          the rock shelf, the alleys, the paving, the sea
     structures.js       houses and buildings; instanced window panes
-    scatter.js          trees, grass, fences, poles, cars, stones, hit volumes
+    scatter.js          trees, weeds, wiring, wall lamps, signs, props, hit volumes
     people3d.js         resident rigs and their walk
-    fx.js              rain, wind, puddles, wet asphalt
+    fx.js               rain, wind, puddles, wet stone
     view.js             the camera, the controls, your hands
     hud.js              the interface, as HTML over the top
   game.js               wiring
 test/
-  run.js                9,400+ headless checks; proves all 60 errands solvable
+  run.js                11,000+ headless checks; proves all 70 errands solvable
   browser.js            Chromium smoke test; screenshots to .shots/
 ```
 
@@ -178,12 +178,13 @@ node test/run.js
 
 Checks the quarter's invariants, that the resident walk graph is fully connected, that
 every interactable has somewhere to stand, that every errand template refers
-only to props, items and verbs that exist — and then drives all sixty
+only to props, items and verbs that exist — and then drives all seventy
 templates to completion with a solver, so nothing in the pool can be
 unfinishable.
 
-It checks that paved ground reads as paved underfoot, so grass cannot grow
-through the front walk, and that you can reach a prop from anywhere inside
+It checks the layout: that no footprint stands in an alley or on top of
+another, and that paved ground reads as paved underfoot, so nothing grows up
+through it. It checks that you can reach a prop from anywhere inside
 it, by calling the real picking code on a stub. It checks the clock and the
 sun: a day really is twenty-four real minutes, the sun really is on the
 horizon at sunrise and sunset and never jumps more than a fraction of a

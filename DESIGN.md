@@ -200,10 +200,22 @@ payoff: the whole town is a few hundred kilobytes of source.
 
 **Materials.** Thirteen surfaces, each generated at load into canvases: an
 albedo, a normal map derived by Sobel from the surface's own height field, and
-a roughness map remapped from the same height field. Asphalt gets aggregate
-speckle and tar-filled cracks; siding gets eight courses of vinyl lap with a
-specular roll-off on each; shingles get staggered tabs and granules; the stone
-bridge gets coursed rubble with moss driven by its own noise field.
+a roughness map remapped from the same height field. Sandstone gets four
+courses with the joints raked out and the bedding lines it was cut along;
+limewash gets a brushed render over it; roof tile gets half-round runs with
+their laps; the alleys and the shelf get coursed rubble with damp in the
+joints, driven by its own noise field.
+
+Anything tinted per use — limewash by each house's wash, the alleys and the
+paving by their stone, the sea by the water — has to be painted near-white,
+because the material colour multiplies the albedo. Get that wrong and the two
+multiply down to nothing: the Mediterranean was painted #2e4a50 and tinted
+#2d5f70, for about half a per cent reflectance, and rendered rgb(0,1,2).
+Metalness is the same trap from the other side. There is no environment map
+here — the sky is a shader on a dome, not a cubemap — so a metal surface loses
+its diffuse and gets nothing back for it. `flat()` and `mat()` cap it at 0.2,
+which is the difference between iron and ink: the overhead wires and the lamp
+brackets were rgb(0,0,0) before it.
 
 **Shader warm-up.** The loader's last step draws the town from twelve vantage
 points across the day and then cycles all seven weather states and all four
@@ -238,12 +250,25 @@ scene is lit by the sky rather than beside it.
 
 **Geometry.** Alleys, their unswept edges and the courses of the sea wall are ribbons
 extruded along their polylines, sampling the terrain height at every step, so
-nothing floats and nothing sinks. Houses are assembled from a shared kit:
-foundation, walls, gable roof with a real overhang, fascia, half-round gutters
-with one downspout, porch deck and posts, recessed window frames with sills,
-a door with a knob, a brick chimney. Everything sharing a material is merged
-into one buffer at build time — eighteen houses come to a handful of draw
-calls rather than nine hundred.
+nothing floats and nothing sinks. Inland of the quay the ground is paved wall
+to wall — there is no ground between these houses that is not somebody's step,
+somebody's corner or the stone in between — and each vertex of that paving
+sits on the highest ground it spans, because it is sampled every 50 cm over
+terrain sampled every 16 cm and otherwise loses the depth fight on a slope.
+
+Houses are assembled from a shared kit: a cut-stone plinth, a course of bare
+sandstone where the render has come off, limewash over it, a flat terrace with
+a parapet or a shallow tile pitch, tall narrow windows in stone surrounds with
+painted shutters either side, the triple-arched window over the door that is
+the reason the front room is called the hall, a stone balcony on two corbels
+with iron uprights, an arched door with voussoirs cut as seven separate
+stones, and on about a third of them the outside stair to the roof. Shops are
+an opening under a stone lintel with the roller shutter run half up, the dark
+of the inside behind it, a worn counter across it and an awning over — built
+on whichever wall the door is actually on, which took a yaw the builder had
+never applied. Everything sharing a material is merged into one buffer at
+build time — eighteen houses come to a handful of draw calls rather than nine
+hundred.
 
 **Instancing.** Trees (trunks, displaced-icosphere canopies, stacked cones for
 conifers), grass, weeds, plant patches, window panes, streetlamp lenses and
@@ -252,14 +277,17 @@ in `instanceColor`, patched into `totalEmissiveRadiance` with a six-line
 `onBeforeCompile`, so the whole town can come on at dusk house by house
 according to whether its resident is home.
 
-**Grass** follows you: six thousand tufts redistributed within 13 m whenever
-you move more than nine, shrinking away over the outer half of that radius
-rather than stopping at a line. A slice of 2200 goes down per frame so the
-sweep never lands in one hitch, and they are rejected off roads, shoulders,
-paving and buildings by the same terrain query the collision uses. Another
-500 taller weeds go in only on the bare shelf, because the alleys are swept
-and the square is flagged. There are no lawns here at all: the tuft count came
-down from six thousand to nine hundred when the world became stone.
+**Grass** follows you: 420 tufts redistributed within 9 m whenever you move
+more than nine, shrinking away over the outer half of that radius rather than
+stopping at a line. A slice of 2200 goes down per frame so the sweep never
+lands in one hitch, and they are rejected off alleys, shoulders, paving and
+buildings by the same terrain query the collision uses. Another 220 taller
+weeds go in only on the bare shelf, because the alleys are swept and the
+square is flagged — and both sets are masked by low-frequency noise, so what
+grows grows in pockets: a corner nobody sweeps, the lee of a wall. Uniform
+density over a limestone shelf in September reads as a meadow. There are no
+lawns here at all: the count came down from six thousand when the world became
+stone, and then by half again when the quarter was paved.
 
 The counts came down from nine thousand and 2600 after near-field
 alpha-tested cards each doing a shadow-map lookup pegged the GPU process for
@@ -353,6 +381,27 @@ never clip a wall. They hold a stand-in built for whatever kind of thing the
 errand has you carrying — a jar with liquid and a lid and twine at the rim, a
 sheet of paper, a spoon with moss in it — and they lean in while you hold `E`.
 
+## Two conventions, read two ways
+
+Almost everything that looked wrong on screen in this quarter came from a
+convention that two pieces of code disagreed about, and the disagreement is
+worth writing down because neither piece was obviously at fault.
+
+**Rects are corners, not centres.** Every rect in `town.js` is
+`[left, top, width, height]`. `facePoint`, `blockRect` and the renderer all
+read it that way. A corridor check written against the centre convention
+therefore reported sixteen phantom overlaps, and "fixing" them stacked half
+the quarter on top of itself. `validateLayout` was right all along; the
+checker was not. A measurement that disagrees with the world is not evidence
+about the world.
+
+**Yaw zero looks down -z, so forward is `(-sin, -cos)`.** Every screenshot
+taken before this was noticed had the camera facing the opposite way — into
+the nearest wall — which produced a confident and entirely wrong reading that
+the alleys were too narrow and the vantage points were inside the houses.
+They are 1.3 to 8.4 m clear, which is what an alley is. Before drawing a
+conclusion from a frame, check that the camera is pointing where you meant.
+
 ## Deliberate omissions
 
 - **No interiors.** Counters, bins and dryers are interacted with from the
@@ -368,7 +417,7 @@ sheet of paper, a spoon with moss in it — and they lean in while you hold `E`.
 
 ## Testing
 
-`test/run.js` runs 9,400+ assertions with no browser: town invariants, full
+`test/run.js` runs 11,000+ assertions with no browser: town invariants, full
 connectivity of the resident walk graph, a standable position adjacent to every
 one of the 215 interactables, and static validation that every step in every
 template refers only to props, items and verbs that exist — checked across
