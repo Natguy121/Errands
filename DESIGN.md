@@ -2,7 +2,7 @@
 
 ## The pitch
 
-A realistic first-person open world, fifty metres square, thirty residents,
+A lived-in open world seen from above, fifty metres square, thirty residents,
 in which the entire gameplay loop is randomly generated, absurdly specific
 side quests and nothing else.
 
@@ -194,37 +194,107 @@ resolving anything:
 
 ## Rendering approach
 
-First person, three.js, everything procedural. There are no asset files in the
-repository — no textures, no models, no audio. This is a constraint with a
-payoff: the whole town is a few hundred kilobytes of source.
+Top-down, on a 2D canvas, everything procedural. There are no asset files in
+the repository — no textures, no models, no audio — and no dependencies at
+all. The whole quarter is a few hundred kilobytes of source and it loads in
+under a second.
 
-**Materials.** Thirteen surfaces, each generated at load into canvases: an
-albedo, a normal map derived by Sobel from the surface's own height field, and
-a roughness map remapped from the same height field. Sandstone gets four
-courses with the joints raked out and the bedding lines it was cut along;
-limewash gets a brushed render over it; roof tile gets half-round runs with
-their laps; the alleys and the shelf get coursed rubble with damp in the
-joints, driven by its own noise field.
+It was a first-person three.js renderer first, and most of the work of this
+document went into it: thirteen generated PBR surfaces, a house kit, batched
+geometry, instanced foliage, an analytic sky dome, a shadow map, a shader
+warm-up pass. The notes on all of that are kept below, under **What the first
+person cost**, because every one of them is a lesson about a specific trap and
+several of those traps have nothing to do with 3D.
 
-Anything tinted per use — limewash by each house's wash, the alleys and the
-paving by their stone, the sea by the water — has to be painted near-white,
-because the material colour multiplies the albedo. Get that wrong and the two
-multiply down to nothing: the Mediterranean was painted #2e4a50 and tinted
-#2d5f70, for about half a per cent reflectance, and rendered rgb(0,1,2).
-Metalness is the same trap from the other side. There is no environment map
-here — the sky is a shader on a dome, not a cubemap — so a metal surface loses
-its diffuse and gets nothing back for it. `flat()` and `mat()` cap it at 0.2,
-which is the difference between iron and ink: the overhead wires and the lamp
-brackets were rgb(0,0,0) before it.
+**Surfaces are tiling patterns, not textures.** Eight small canvases are
+generated at load — the limestone shelf, the setts of the alleys, the darker
+apron between the buildings, the flags of the square, the quay, the slipway
+concrete, the wall coping, the pantiles and the sea — and used as repeating
+`CanvasPattern`s. The pattern carries a transform of `1/32` so one tile pixel
+is one thirty-second of a metre, and the whole frame is drawn with
+`ctx.setTransform(ppm, 0, 0, ppm, ox, oy)`. Everything downstream of that is
+in metres: a line width of `0.05` is five centimetres of mortar joint at any
+zoom, and the stone stays the right size whether you are looking at a doorway
+or at the whole town.
 
-**Shader warm-up.** The loader's last step draws the town from twelve vantage
-points across the day and then cycles all seven weather states and all four
-HUD modes, including one pass into the offscreen target a photograph uses. Programs -- and especially
-the shadow-depth variants -- otherwise compile on first sight of each
-material, so the first walk into town, the first shower and the first
-photograph would each hitch. Paying once behind the loading bar is strictly
-better, and on a software rasteriser the difference is seconds per stall
-rather than milliseconds.
+**The alleys have to be the clearest thing on the screen.** They were not, at
+first. The apron, the alleys and their shoulders all came off the same pale
+sett pattern, so a game whose entire subject is walking eight named alleys
+rendered as one continuous beige field with buildings sitting on it. The fix
+is contrast by role rather than by texture: the apron is a shade darker and
+greyer, each alley gets a dark kerb line the width of its own shoulders, the
+swept crown down the middle is brushed 16% lighter, and the alley of steps
+gets its risers drawn across it every 45 cm. Naming a surface is not enough;
+it has to look different.
+
+**Shadows are the only thing left of the third dimension**, and they are worth
+the trouble because without them a town from above is a floor plan. Each
+footprint casts one polygon: the rect swept along a vector taken from the sun's
+real bearing and elevation, `1/tan(elev)` long and scaled by the building's
+storey height. The first attempt drew the footprint, the offset footprint and
+two connecting skirts as four closed subpaths in one `fill()`, and the nonzero
+winding rule cancelled the middle of every shadow out. One hexagon traced in
+one direction, from the two corners the light leaves first to the two it
+leaves last, fills correctly.
+
+**The light is the part that survived the move.** `light2d.js` keeps the table
+the first-person renderer was tuned against — ten stops from the sun 90°
+below the horizon to 60° above, each with a wash colour, a wash strength, a
+sun and ambient colour and a shadow depth — and the solar model still lives on
+the clock. What it hands out now is three plain things: a colour to multiply
+over the frame, a bearing and length for the shadows, and how far the
+streetlamps have come on. Night is one multiply pass at 75% of a dark blue;
+the lamps and the lit windows are drawn *after* it with `globalCompositeOperation
+= 'lighter'`, which is why a pool of lamplight reads as light rather than as
+a pale patch. The dying lamp on the souk flickers on its own phase, which is
+why the errand about photographing it works.
+
+**Two hundred and twenty-five things, drawn as glyphs.** Every prop the errands
+name is on the screen, so they have to be legible at a glance and quiet enough
+that the town underneath still reads. Each one is matched against a tag table
+in priority order — `water` before `stone`, `lamp` before `iron` — and drawn
+as one of about twenty small shapes: a ring for anything you fill, a wedge for
+anything that points, a pot, a leaf, a drum, a bowl for a dish. The first pass
+drew them at twice this size and the quarter disappeared behind its own
+contents. The one the errand wants gets a pulsing gold ring; whatever you are
+about to touch gets a white one.
+
+**You have to be findable.** The player is drawn after the night wash, as a
+warm halo, a dark disc, a bright core and a facing wedge, with a dashed ring
+at exactly `ER.REACH` so you can see when you are close enough to act. Before
+that, at night with the lamps lit, the brightest thing on the screen was a
+streetlamp four metres away and you were a beige dot on beige paving.
+
+**Walking is compass-relative.** W is north whatever you are facing, and your
+facing follows your travel. The first-person convention — turn the body, walk
+forward — steers like a tank from above. `yaw` keeps its old meaning (facing
+is `(-sin yaw, -cos yaw)`) so the map screen, the resident code and the save
+file did not have to change.
+
+**Pointing replaced the crosshair.** From above, a prop's footprint is right
+there on the paving, so there is nothing to raycast: the pointer is in the
+footprint or it is not. `view.pick` tries the errand's own target first if you
+can reach it, then whatever the pointer is over within reach, then whatever
+you are practically standing on. That last fallback is what the errands
+actually depend on, and `test/run.js` calls the real function from all 225
+props' own stand points to prove it.
+
+**What is paved is data.** `town.paving` lists every apron and walk as a
+rectangle and `town.apron` marks where the wall-to-wall paving starts. The
+renderer lays them down and `terrainAt` reads the same list, so a flagged
+square is flagged to the footstep sounds, to a resident's walking speed and to
+the eye at once. While that list lived in the renderer, the simulation did not
+know the paving existed.
+
+**Weather, from above.** Rain is not streaks — you are looking down at it — it
+is the marks it makes: short dashes blowing with the gust, and a ring where
+each one lands. Fog and overcast are washes that also flatten the shadows,
+because there is nothing casting them. The sea gets a drifting swell drawn as
+sine-displaced polylines and a paler band over the shallows.
+
+## What the first person cost
+
+None of the code below is in the repository any more. The traps are.
 
 **The sun** is real geometry rather than a curve that looked about right. The
 clock commits to a sunrise and a sunset, and `Clock.sunElevation` picks the
@@ -314,6 +384,12 @@ own radius, so it could not. A prop's reach is now
 stone bridge -- one of the errands from the original brief -- could not be
 scraped while standing on the bridge until this was fixed.
 
+Drawn from above there are no hit volumes and no ray, so none of that
+geometry survives. The rule did: a prop's reach is its own extent plus an
+arm's length, never a flat cap. And the test that pinned it got better in the
+move, because it stopped being about one prop's radius and started calling the
+real picking function from all 225 stand points.
+
 **What is paved is data.** `town.paving` lists every lot, apron and walk as a
 rectangle, and `town.pavedStrips` the poured lines. The renderer lays them
 down and `terrainAt` reads the same list, so a concrete walk is concrete to
@@ -370,16 +446,27 @@ copy of a corner the same answer, so the mass stays closed and still looks
 grown rather than moulded -- and it costs no extra triangles, which matters
 when one canopy geometry is instanced across a thousand trees.
 
-**Weather.** Rain is instanced streaks falling in a box around the camera with
-splash rings on the ground. Wetness drops the roughness and darkens the colour
-of asphalt and concrete, which is most of what wet roads actually look like,
-and puddles fade in and outlast the shower. Wind bends anything with blades in
-the vertex shader, gusting on two sine periods, scaled by the weather.
+**Weather, in three dimensions.** Rain was instanced streaks falling in a box
+around the camera with splash rings on the ground. Wetness dropped the
+roughness and darkened the stone, which is most of what wet paving actually
+looks like, and puddles faded in and outlasted the shower. Wind bent anything
+with blades in the vertex shader, gusting on two sine periods.
 
-**Your hands** are in their own scene rendered after a depth clear, so they
-never clip a wall. They hold a stand-in built for whatever kind of thing the
-errand has you carrying — a jar with liquid and a lid and twine at the rim, a
-sheet of paper, a spoon with moss in it — and they lean in while you hold `E`.
+That wind is worth one more paragraph, because the bug in it was a class of
+bug rather than a mistake. `uniforms.uWind.value` and
+`material.userData.wind.value` were the same `Vector4`, and the per-frame
+gust was computed by reading the strength back *out* of the uniform and
+scaling it. Compounding exponentially, after a few hundred frames every blade
+of grass was displaced by metres, which is what the long green streaks across
+the ground turned out to be. Storing the base strength separately fixed it.
+Anything that reads its own output as its next input will do this.
+
+**Your hands** were in their own scene rendered after a depth clear, so they
+never clipped a wall. They held a stand-in built for whatever kind of thing
+the errand had you carrying — a jar with liquid and a lid and twine at the
+rim, a sheet of paper, a spoon with moss in it — and leaned in while you held
+`E`. From above there are no hands: what you are carrying is in the HUD, and
+the leaning-in is a ring that closes around you.
 
 ## Two conventions, read two ways
 
@@ -429,31 +516,33 @@ noon and never once going back the way it came.
 
 `test/run.js` runs 11,000+ assertions with no browser: town invariants, full
 connectivity of the resident walk graph, a standable position adjacent to every
-one of the 215 interactables, and static validation that every step in every
+one of the 225 interactables, and static validation that every step in every
 template refers only to props, items and verbs that exist — checked across
 six parameter rolls per template. Then a solver drives all seventy templates
 to completion, bending the clock and the weather as each step demands, which
 means no template can ship unfinishable.
 
-`test/browser.js` builds the world in Chromium and plays it: real key events
-for walking, mouse-look, eye height checked over a hill, a bridge, a ridge and
-a field, crosshair picking against four different props, a held `E` that
-searches a ruin, a photograph checked for tonal range so a blank frame fails,
-the black-and-white edit, every screen, an errand driven to completion,
-resident rigs checked to be standing on the ground rather than in it,
-lingering, frame cost, and a save round-tripped through a reload. Any console
-error or uncaught exception fails the run.
+`test/browser.js` builds the quarter in Chromium and plays it, in about seven
+seconds: the canvas features the drawing leans on, real key events for
+walking, all four movement keys checked to turn you the way you went, the
+pointer aimed at the fountain from an arm's length, a world coordinate
+round-tripped through the camera, four places drawn across the day and the
+weather, the light held to the hour — the noon sun above forty degrees with
+the lamps off, the lamps on at night, the sun in the east at dawn and the west
+at dusk — picking against four different props, a held `E` that searches a
+ruin, an errand driven to completion, no resident standing inside a building,
+every screen, lingering, frame cost at two zooms, a photograph checked for
+tonal range so a blank frame fails, the black-and-white edit, and a save
+round-tripped through a reload. Any console error or uncaught exception fails
+the run.
 
-Two things about that harness are worth knowing, because both cost real time
-to work out and neither is a fault in the game:
+One thing about that harness is worth knowing, and it is not a fault in the
+game: headless Chromium treats the page as hidden, so it throttles both
+`requestAnimationFrame` and timers and the game's own loop simply stops. The
+harness therefore steps `update`/`render` itself, which is deterministic as
+well as immune to throttling.
 
-- Headless Chromium treats the page as hidden, so it throttles both
-  `requestAnimationFrame` and timers and the game's own loop simply stops.
-  The harness therefore steps `update`/`render` itself, which is deterministic
-  as well as immune to throttling.
-- Screenshots are opt-in (`SHOOT=1`). The only GPU in a headless container is
-  SwiftShader, which JITs a pipeline per combination of material, state and
-  framebuffer; reading pixels back out of an offscreen target costs seconds and
-  sometimes tens of seconds, entirely unpredictably. Steady-state drawing, by
-  contrast, measures 3-5 ms a frame at 1280x720 even on that rasteriser, so the
-  slowness is in the capture path, not the renderer.
+The first-person version of this suite took 232 seconds, most of it waiting
+for SwiftShader to JIT a pipeline per combination of material, state and
+framebuffer, and it needed five GPU flags to run headless at all. A 2D
+context needs none of them.

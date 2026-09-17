@@ -39,11 +39,12 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 (async function () {
   if (!fs.existsSync(SHOTS)) fs.mkdirSync(SHOTS, { recursive: true });
+  /* No GPU flags. The quarter is drawn on a 2D context now, so there is no
+     WebGL to fall back to a software rasteriser, no shader programs to
+     compile and nothing here that needs ANGLE talked into existence. */
   var browser = await pw.chromium.launch({
     executablePath: '/opt/pw-browsers/chromium',
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-      '--ignore-gpu-blocklist', '--enable-webgl', '--disable-gpu-sandbox',
-      '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+    args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows',
       '--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling']
   });
@@ -55,7 +56,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   page.on('console', function (m) {
     var txt = m.text();
     if (m.type() === 'error') { if (/favicon/i.test(txt)) return; errors.push('console: ' + txt); }
-    else if (m.type() === 'warning' && /THREE|shader|program/i.test(txt)) warnings.push(txt);
+    else if (m.type() === 'warning') warnings.push(txt);
   });
   page.on('pageerror', function (e) { errors.push('uncaught: ' + (e.message || e)); });
 
@@ -80,19 +81,16 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
           if (i % 8 === 0 || i === a[0] - 1) g.render();
         } catch (e) { err = (e && e.stack) || String(e); break; }
       }
-      return { err: err, t: g.t, calls: g.view.mainCalls || 0, tris: g.view.mainTris || 0 };
+      return { err: err, t: g.t };
     }, [n, step]);
     if (r.err) errors.push('the loop threw: ' + r.err.split('\n').slice(0, 4).join('  |  '));
     return r;
   }
-  /* A screenshot forces Chromium to composite a frame. Under software
-     rasterisation that is slow but workable now that every shader program is
-     compiled up front. A timeout is recorded as a warning rather than a
-     failure: it says nothing about the game. */
-  /* Capture through the game's own renderer: render into the offscreen target
-     it already uses for photographs and read the pixels back. Fixed at the
-     photograph's size, because the loader warms exactly that pipeline. This
-     shows the world without the HTML HUD; uiShot covers the HUD frames. */
+  /* Capture through the game's own renderer: draw the frame into the
+     offscreen canvas it already uses for photographs. Fixed at the
+     photograph's size. This shows the quarter without the HTML HUD; uiShot
+     covers the HUD frames. A timeout is a warning rather than a failure: it
+     says nothing about the game. */
   async function worldShot(name) {
     if (!SHOOT) return;
     var pending = page.evaluate(function () {
@@ -115,24 +113,33 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
   await page.goto('http://127.0.0.1:' + PORT + '/index.html', { waitUntil: 'load' });
 
-  /* ---- 1. WebGL ---- */
-  var gl = await page.evaluate(function () {
+  /* ---- 1. the canvas ---- */
+  var can2d = await page.evaluate(function () {
     var c = document.createElement('canvas');
-    var g = c.getContext('webgl2') || c.getContext('webgl');
+    var g = c.getContext('2d');
     if (!g) return null;
-    var dbg = g.getExtension('WEBGL_debug_renderer_info');
-    return { renderer: dbg ? g.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : 'unknown' };
+    /* the two things the drawing leans on beyond fills and strokes */
+    var p = g.createPattern(c, 'repeat');
+    return { pattern: !!p, setTransform: !!(p && p.setTransform),
+      matrix: typeof DOMMatrix !== 'undefined', ellipse: typeof g.ellipse === 'function' };
   });
-  if (!gl) errors.push('no WebGL context available');
-  else say('WebGL: ' + gl.renderer);
+  if (!can2d) errors.push('no 2D canvas context available');
+  else {
+    if (!can2d.pattern) errors.push('canvas patterns are unavailable, so every surface would be flat');
+    if (!can2d.setTransform || !can2d.matrix) {
+      errors.push('pattern.setTransform or DOMMatrix is missing, so the stone would not scale with the zoom');
+    }
+    if (!can2d.ellipse) errors.push('ctx.ellipse is missing, so half the glyphs would not draw');
+    say('2D canvas with patterns, pattern transforms and ellipses');
+  }
 
   /* ---- 2. build ---- */
   var t0 = Date.now();
   await page.click('#go');
   await page.waitForFunction(function () {
     return window.game && window.game.director && window.game.director.active &&
-      window.game.scene3d && window.game.scene3d.raycastTargets.length > 0 &&
-      window.game.people3d && window.game.shadersWarm;
+      window.game.scene && window.game.scene.raycastTargets.length > 0 &&
+      window.game.scene.relief && window.game.shadersWarm;
   }, null, { timeout: 300000 });
   say('world built in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 
@@ -141,31 +148,28 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   say('loop ran a second of game time without throwing');
 
   var built = await page.evaluate(function () {
-    var g = window.game, meshes = 0, tris = 0, instanced = 0, instances = 0;
-    g.view.scene.traverse(function (o) {
-      if (!o.isMesh) return;
-      meshes++;
-      if (o.isInstancedMesh) { instanced++; instances += o.count; }
-      var geo = o.geometry;
-      var per = geo && geo.index ? geo.index.count / 3
-        : (geo && geo.attributes.position ? geo.attributes.position.count / 3 : 0);
-      tris += per * (o.isInstancedMesh ? o.count : 1);
+    var g = window.game;
+    var tiles = Object.keys(g.scene.tiles);
+    var missing = tiles.filter(function (k) {
+      var t = g.scene.tiles[k];
+      return !t || !t.width || !t.height;
     });
-    return { meshes: meshes, tris: Math.round(tris), instanced: instanced, instances: instances,
-      hits: g.scene3d.raycastTargets.length,
-      panes: g.scene3d.paneList ? g.scene3d.paneList.length : 0,
-      lamps: g.scene3d.lamps.length,
-      progs: g.view.renderer.info.programs.length,
-      calls: g.view.mainCalls || 0,
+    return { tiles: tiles.length, missing: missing,
+      relief: g.scene.relief ? g.scene.relief.width + 'x' + g.scene.relief.height : 'none',
+      props: g.scene.raycastTargets.length,
+      lamps: g.town.lamps.length,
+      trees: g.town.trees.length,
+      footprints: g.town.lots.length + g.town.buildings.length,
+      metres: g.view.metres,
       errand: g.director.active.title,
-      eye: [Math.round(g.view.pos.x), +g.view.pos.y.toFixed(2), Math.round(g.view.pos.z)] };
+      at: [Math.round(g.view.pos.x), Math.round(g.view.pos.z)] };
   });
-  say(built.meshes + ' meshes, ' + (built.tris / 1000).toFixed(0) + 'k triangles, ' +
-    built.instanced + ' instanced meshes carrying ' + built.instances + ' instances');
-  say(built.panes + ' window panes, ' + built.lamps + ' streetlamps, ' + built.hits +
-    ' hit volumes, ' + built.progs + ' shaders, ' + built.calls + ' draw calls a frame');
-  say('standing at ' + built.eye.join(', ') + ' — "' + String(built.errand).slice(0, 58) + '…"');
-  await worldShot('01-depot-street');
+  if (built.missing.length) errors.push('surfaces that did not generate: ' + built.missing.join(', '));
+  say(built.tiles + ' generated surfaces, relief field ' + built.relief + ', ' +
+    built.footprints + ' footprints, ' + built.trees + ' trees, ' + built.lamps + ' streetlamps');
+  say(built.props + ' props, all of them pickable, at ' + built.metres + ' m across the short side');
+  say('standing at ' + built.at.join(', ') + ' — "' + String(built.errand).slice(0, 58) + '…"');
+  await worldShot('01-the-souk');
 
   /* ---- 3. walking and looking ---- */
   var before = await page.evaluate(function () {
@@ -184,59 +188,118 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   if (!(after > before + 2)) errors.push('walking did not move the player (' + before + ' → ' + after + ')');
   say('walked ' + (after - before).toFixed(1) + ' m on real key events');
 
-  var looked = await page.evaluate(function () {
-    var v = window.game.view, y0 = v.yaw;
-    document.dispatchEvent(new MouseEvent('mousemove', { movementX: 400, movementY: 60 }));
-    return Math.abs(v.yaw - y0) > 0.1 && v.pitch < 0;
-  });
-  if (!looked) errors.push('mouse look did not turn the camera');
-  say('mouse look turns the camera');
-
-  /* eye height must follow the ground */
-  var terrainFollow = await page.evaluate(async function () {
-    var g = window.game, out = [];
-    var spots = [[575, 660], [1470, 1010], [1616, 630], [1000, 400]];
-    for (var s = 0; s < spots.length; s++) {
-      g.view.pos.x = spots[s][0]; g.view.pos.z = spots[s][1];
-      g.view.pos.y = g.town.heightAt(spots[s][0], spots[s][1]);
-      for (var k = 0; k < 8; k++) g.update(1 / 60);   /* no render: the eye
-         height comes from the simulation, not from drawing */
-      out.push(+(g.view.camera.position.y - g.town.heightAt(spots[s][0], spots[s][1])).toFixed(2));
+  /* You face where you walk, and W is north whichever way you were facing.
+     The alternative — turning the body and walking forward — is a
+     first-person idea, and from above it steers like a tank. */
+  var facings = await page.evaluate(async function () {
+    var g = window.game, out = {};
+    var dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+    for (var k in dirs) {
+      if (!Object.prototype.hasOwnProperty.call(dirs, k)) continue;
+      g.view.pos.x = 30.6; g.view.pos.z = 27.2;
+      var held = {}; held[k] = true;
+      var input = { is: function (n) { return !!held[n]; } };
+      for (var i = 0; i < 10; i++) g.view.move(1 / 60, input);
+      out[k] = { fx: +(-Math.sin(g.view.yaw)).toFixed(2), fy: +(-Math.cos(g.view.yaw)).toFixed(2) };
     }
     return out;
   });
-  var badEye = terrainFollow.filter(function (e) { return Math.abs(e - 1.68) > 0.12; });
-  if (badEye.length) errors.push('eye height did not follow the terrain: ' + terrainFollow.join(', '));
-  say('eye height holds ' + terrainFollow[0].toFixed(2) + ' m over ground on a hill, a bridge, a ridge and a field');
+  var wrongWay = [];
+  [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]].forEach(function (c) {
+    var f = facings[c[0]];
+    if (!f || Math.abs(f.fx - c[1]) > 0.06 || Math.abs(f.fy - c[2]) > 0.06) {
+      wrongWay.push(c[0] + ' faced ' + (f ? f.fx + ',' + f.fy : 'nowhere'));
+    }
+  });
+  if (wrongWay.length) errors.push('walking did not turn you the way you went: ' + wrongWay.join('; '));
+  say('you face the way you walk, on all four compass directions');
+
+  /* the pointer decides what you are about to touch */
+  var pointed = await page.evaluate(function () {
+    var g = window.game;
+    var target = g.town.props.fountain;
+    var pos = g.town.propPos(target);
+    /* stand an arm's length off it, with the pointer somewhere else entirely */
+    g.view.pos.x = pos.x + 1.2; g.view.pos.z = pos.y + 1.2;
+    g.player.x = g.view.pos.x; g.player.y = g.view.pos.z;
+    g.view.aim.on = false;
+    g.update(1 / 60);
+    var blind = g.looking ? g.looking.id : null;
+    /* now put the pointer on it */
+    g.view.aim.on = true; g.view.aim.x = pos.x; g.view.aim.y = pos.y;
+    g.update(1 / 60);
+    var aimed = g.looking ? g.looking.id : null;
+    /* and the screen-to-world round trip the pointer depends on */
+    var s = g.view.worldToScreen(pos.x, pos.y);
+    var back = g.view.screenToWorld(s.x, s.y);
+    return { blind: blind, aimed: aimed,
+      roundTrip: Math.hypot(back.x - pos.x, back.y - pos.y) };
+  });
+  if (pointed.aimed !== 'fountain') {
+    errors.push('pointing at the fountain from an arm\'s length picked ' + pointed.aimed);
+  }
+  if (pointed.roundTrip > 0.01) {
+    errors.push('the screen-to-world round trip is off by ' + pointed.roundTrip.toFixed(3) + ' m');
+  }
+  say('the pointer picks what it is over (' + pointed.aimed + '), and ' +
+    (pointed.blind ? 'falls back to ' + pointed.blind : 'nothing') + ' when it is over nothing');
 
   /* ---- 4. places, hours, weather ---- */
-  /* yaw 0 looks down -z, so these are the yaws that look along the alley */
   var scenes = [
-    ['02-souk-midday', 7.8, 26.1, Math.atan2(-34.2, 2.0), 12.4, 'fair'],
-    ['03-quay-rain', 8.2, 41.6, Math.atan2(0.0, 39.0), 15.0, 'rain']
+    ['02-souk-midday', 21.4, 25.2, 12.4, 'fair', 22],
+    ['03-quay-rain', 8.4, 30.0, 15.0, 'rain', 22],
+    ['04-square-night', 30.6, 27.2, 1.5, 'fair', 18],
+    ['05-all-of-it', 25.0, 25.0, 17.0, 'fair', 30]
   ];
-  if (QUICK) scenes = [];
+  if (QUICK) scenes = scenes.slice(0, 0);
   for (var s2 = 0; s2 < scenes.length; s2++) {
     var sc = scenes[s2];
     await page.evaluate(function (a) {
       var g = window.game;
       g.view.pos.x = a[1]; g.view.pos.z = a[2];
       g.view.pos.y = g.town.heightAt(a[1], a[2]);
-      g.view.yaw = a[3]; g.view.pitch = -0.045;
-      g.clock.minutes = a[4] * 60;
-      g.clock.setWeather(a[5]);
-      g.clock.wet = (a[5] === 'rain' || a[5] === 'storm') ? 1 : 0;
-      g.clock.fogAmt = a[5] === 'fog' ? 0.85 : 0;
-      if (g.scene3d.grass) g.scene3d.grass.lastX = 1e9;
-      if (g.scene3d.weeds) g.scene3d.weeds.lastX = 1e9;
+      g.view.metres = a[5];
+      g.clock.minutes = a[3] * 60;
+      g.clock.setWeather(a[4]);
+      g.clock.wet = (a[4] === 'rain' || a[4] === 'storm') ? 1 : 0;
+      g.clock.fogAmt = a[4] === 'fog' ? 0.85 : 0;
     }, sc);
     var sceneT = Date.now();
-    await tick(0.2);
+    await tick(0.4);
     await worldShot(sc[0]);
     if (process.env.VERBOSE) say('  \u00b7 ' + sc[0] + '  (' + (Date.now() - sceneT) + ' ms)');
   }
   say((SHOOT ? 'rendered and captured ' : 'rendered ') + scenes.length +
     ' places across the day and the weather' + (SHOOT ? '' : ' (SHOOT=1 to save them)'));
+
+  /* The light has to actually change with the hour. This is the one thing
+     that came across from the first-person renderer unchanged — the table of
+     what the light does at each sun elevation, and the solar geometry on the
+     clock — so it is worth holding it to the same behaviour. */
+  var hours = await page.evaluate(function () {
+    var g = window.game, out = [];
+    [3, 6.5, 9, 13, 17, 19.3, 22].forEach(function (h) {
+      g.clock.minutes = h * 60;
+      g.clock.setWeather('fair');
+      g.clock.wet = 0;
+      g.scene.update(g, 0);
+      var L = g.scene.light;
+      out.push({ h: h, elev: +L.elev.toFixed(1), az: +L.azimuth.toFixed(0),
+        wash: +L.washAlpha.toFixed(3), shade: +L.shade.toFixed(3),
+        lamps: +L.lamps.toFixed(2) });
+    });
+    return out;
+  });
+  var noon = hours[3], night = hours[6], dawn = hours[1];
+  if (!(noon.elev > 40)) errors.push('the midday sun is only ' + noon.elev + ' degrees up');
+  if (!(night.wash > noon.wash + 0.3)) errors.push('night is not darker than noon');
+  if (!(noon.shade > night.shade)) errors.push('shadows at noon are not stronger than at night');
+  if (!(night.lamps > 0.9)) errors.push('the streetlamps are not on at ten at night');
+  if (!(noon.lamps < 0.05)) errors.push('the streetlamps are on at one in the afternoon');
+  if (!(dawn.az > 60)) errors.push('the dawn sun is not in the east (azimuth ' + dawn.az + ')');
+  if (!(hours[5].az < -60)) errors.push('the dusk sun is not in the west, over the sea');
+  say('the light runs the day: noon ' + noon.elev + ' deg with shadows at ' + noon.shade +
+    ', night wash ' + night.wash + ' with the lamps at ' + night.lamps);
 
   /* ---- 5. the crosshair ---- */
   var picks = await page.evaluate(function () {
@@ -354,23 +417,38 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     for (var j = 0; j < g.people.length; j++) {
       if (Math.abs(g.people[j].x - start[j][0]) + Math.abs(g.people[j].y - start[j][1]) > 1) moved++;
     }
-    var visible = 0, onGround = 0;
-    for (var r2 = 0; r2 < g.people3d.rigs.length; r2++) {
-      var slot = g.people3d.rigs[r2];
-      if (!slot.obj.visible) continue;
-      visible++;
-      if (Math.abs(slot.obj.position.y - g.town.heightAt(slot.obj.position.x, slot.obj.position.z)) < 0.1) onGround++;
+    /* they are dots on the paving now, so what matters is that they are on
+       ground you could walk on and that the ones on screen are on screen */
+    var cam = g.view.camera2d();
+    var walls = g.town.lots.map(function (l) { return l.rect; })
+      .concat(g.town.buildings.filter(function (b) { return !b.ruin && !b.open; })
+        .map(function (b) { return b.rect; }));
+    var onScreen = 0, inWalls = 0;
+    for (var r2 = 0; r2 < g.people.length; r2++) {
+      var r = g.people[r2];
+      if (r.away) continue;
+      var sx = r.x * cam.ppm + cam.ox, sy = r.y * cam.ppm + cam.oy;
+      if (sx > 0 && sx < cam.w && sy > 0 && sy < cam.h) onScreen++;
+      /* Not isBlocked: that grid is padded by 10 cm around every footprint,
+         and a doorway is 5 cm off the wall, so anybody standing at their own
+         front door counts as blocked. What is wrong is being inside the
+         building. */
+      for (var b = 0; b < walls.length; b++) {
+        var q = walls[b];
+        if (r.x > q[0] + 0.25 && r.x < q[0] + q[2] - 0.25 &&
+            r.y > q[1] + 0.25 && r.y < q[1] + q[3] - 0.25) { inWalls++; break; }
+      }
     }
-    return { moved: moved, visible: visible, onGround: onGround, met: g.metCount(),
+    return { moved: moved, onScreen: onScreen, inWalls: inWalls, met: g.metCount(),
       away: g.people.filter(function (p) { return p.away; }).length,
-      talking: g.people.filter(function (p) { return !!p.say; }).length };
+      talking: g.people.filter(function (p) { return !!p.say; }).length,
+      bubbles: g.scene.bubblePositions(g.people, g.view).length };
   });
   if (folk.moved < 3) errors.push('hardly any residents moved (' + folk.moved + ')');
-  if (folk.visible && folk.onGround !== folk.visible) {
-    errors.push('resident rigs are not standing on the ground (' + folk.onGround + '/' + folk.visible + ')');
-  }
-  say(folk.moved + ' residents walked their routines; ' + folk.visible + ' rigs on screen, all on the ground; ' +
-    folk.away + ' out of town, ' + folk.met + ' met, ' + folk.talking + ' talking');
+  if (folk.inWalls) errors.push(folk.inWalls + ' residents are standing inside a wall');
+  say(folk.moved + ' residents walked their routines; ' + folk.onScreen + ' on screen, none in a wall; ' +
+    folk.away + ' out of town, ' + folk.met + ' met, ' + folk.talking + ' talking (' +
+    folk.bubbles + ' bubbles placed)');
   await tick(0.4);
   await uiShot('24-souk-noon');
 
@@ -388,30 +466,33 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   /* ---- 11. cost per frame ---- */
   var perf = await page.evaluate(function () {
     var g = window.game;
-    g.view.pos.x = 7.8; g.view.pos.z = 26.1;
-    g.view.pos.y = g.town.heightAt(7.8, 26.1);
-    g.view.yaw = Math.atan2(-34.2, 2.0);
+    g.view.pos.x = 21.4; g.view.pos.z = 25.2;
+    g.view.pos.y = g.town.heightAt(21.4, 25.2);
     function avg(fn, n) { var t = performance.now(); for (var i = 0; i < n; i++) fn(); return (performance.now() - t) / n; }
-    var up = avg(function () { g.update(1 / 60); }, 40);
-    var full = avg(function () { g.render(); }, 4);
-    var casters = 0;
-    g.view.scene.traverse(function (o) { if (o.isMesh && o.castShadow) casters++; });
-    return { update: up, render: full, casters: casters,
-      calls: g.view.mainCalls || 0, tris: g.view.mainTris || 0 };
+    var out = {};
+    out.up = avg(function () { g.update(1 / 60); }, 40);
+    g.view.metres = 22;
+    out.near = avg(function () { g.render(); }, 20);
+    g.view.metres = 30;                     /* the whole quarter at once */
+    out.far = avg(function () { g.render(); }, 20);
+    g.view.metres = 22;
+    return out;
   });
-  say('per frame: ' + perf.update.toFixed(1) + ' ms simulation + ' + perf.render.toFixed(0) +
-    ' ms drawing under a software rasteriser');
-  say('  (' + perf.calls + ' draw calls, ' + (perf.tris / 1000).toFixed(0) +
-    'k triangles, ' + perf.casters + ' shadow casters — a GPU draws this in single-digit ms)');
+  if (perf.up > 4) errors.push('the simulation costs ' + perf.up.toFixed(1) + ' ms a frame');
+  if (perf.far > 26) errors.push('drawing the whole quarter costs ' + perf.far.toFixed(1) + ' ms a frame');
+  say('per frame: ' + perf.up.toFixed(2) + ' ms simulation + ' + perf.near.toFixed(1) +
+    ' ms drawing (' + perf.far.toFixed(1) + ' ms with the whole quarter on screen)');
 
   /* ---- 12. a photograph, last because it is the slowest ---- */
   if (!QUICK) {
     await page.evaluate(function () {
       var g = window.game;
-      var lamp = g.town.props.streetlamp_dying;
-      g.view.pos.x = lamp.x + 6; g.view.pos.z = lamp.y + 6;
+      /* the dying lamp on the souk, with the camera over it: a photograph
+         from above is the patch of the quarter the frame is on */
+      var lamp = g.town.props.souk_lamp;
+      g.view.pos.x = lamp.x; g.view.pos.z = lamp.y + 1.2;
       g.view.pos.y = g.town.heightAt(g.view.pos.x, g.view.pos.z);
-      g.view.yaw = Math.PI * 1.25; g.view.pitch = 0.3;
+      g.view.metres = 14;
       g.clock.minutes = 22.4 * 60;
       g.clock.setWeather('clear');
     });
@@ -457,7 +538,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   await page.click('#go');
   await page.waitForFunction(function () {
     return window.game && window.game.director && window.game.director.active &&
-      window.game.people3d && window.game.shadersWarm;
+      window.game.scene && window.game.shadersWarm;
   }, null, { timeout: 240000 });
   await tick(0.5);
   var reloaded = await page.evaluate(function () {
@@ -474,7 +555,7 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
   console.log('');
   if (warnings.length) {
-    console.log('  ' + warnings.length + ' three.js warning(s):');
+    console.log('  ' + warnings.length + ' warning(s):');
     warnings.slice(0, 5).forEach(function (w) { console.log('   ~ ' + w.slice(0, 150)); });
     console.log('');
   }

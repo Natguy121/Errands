@@ -21,9 +21,12 @@ global.localStorage = (function () {
   };
 })();
 
+/* two/view2d only touches the document inside its constructor, so it loads
+   here and the picking rules can be tested against the real code rather than
+   a restatement of them. */
 ['core/rng', 'core/util', 'core/save', 'world/names', 'world/time', 'world/town',
   'quest/items', 'quest/pool', 'quest/pool2', 'quest/director',
-  'world/residents', 'game'].forEach(function (f) {
+  'world/residents', 'two/view2d', 'game'].forEach(function (f) {
   try { require(path.join(SRC, f + '.js')); } catch (e) {
     if (e.code !== 'MODULE_NOT_FOUND') throw e;
   }
@@ -121,57 +124,79 @@ ok(town.isBlocked(2, 25), 'you should not be able to walk out to sea');
   ok(bad.length === 0, 'props with nowhere to stand: ' + bad.join(', '));
 })();
 
-/* Reaching a prop you are standing on. This calls the real pickProp, on a
-   stub whose crosshair sees nothing, standing at the outer edge of a prop's
-   own radius.
+/* Reaching what the errand sends you to. This calls the real pickProp on a
+   stub whose pointer sees nothing, standing at the spot town.js says you
+   would stand to be served or to knock.
 
-   At four square kilometres this caught a real bug on a specific prop: the
-   moss on the old stone bridge had a 3.2 m hit volume against a flat 2.2 m
-   reach cap, so it went unpickable exactly when you stood on it -- and the
-   crosshair could not rescue you, because from inside a hit volume the only
-   intersection is the far wall, which for a 3.2 m sphere lands past the
-   5.4 m the crosshair reaches. Fifty metres of old town has no props that
-   wide, so this now pins the rule instead of the instance. */
+   The first-person version of this test caught a real bug on a specific prop:
+   the moss on the old stone bridge had a 3.2 m hit volume against a flat
+   2.2 m reach cap, so it went unpickable exactly when you stood on it, and
+   the crosshair could not rescue you either. Drawn from above there are no
+   hit volumes, but the rule survived the move: a prop's reach is its own
+   extent plus an arm's length, never a flat cap. What this pins now is the
+   thing the errands actually depend on — that being at a prop's stand point
+   is enough to touch it — checked on all 225 of them rather than on one. */
 (function () {
   if (!ER.Game) { ok(false, 'game.js did not load, so pickProp is untested'); return; }
+
+  function pickFrom(x, y, wantedId) {
+    return ER.Game.prototype.pickProp.call({
+      town: town,
+      player: { x: x, y: y },
+      director: { currentStep: function () { return wantedId ? { at: wantedId } : null; } },
+      /* the pointer is off in a corner of the screen, over nothing */
+      view: { pick: function (list, range, prefer) {
+        return ER.View.prototype.pick.call(
+          { town: town, pos: { x: x, y: 0, z: y }, aim: { on: false, x: 0, y: 0 } },
+          list, range, prefer);
+      } },
+      scene: { raycastTargets: town.propList }
+    });
+  }
+
+  var unreachable = [];
+  town.propList.forEach(function (p) {
+    if (p.hidden) return;
+    var pos = town.propPos(p);
+    var stand = p.stand || pos;
+    var got = pickFrom(stand.x, stand.y, p.id);
+    if (!got || got.id !== p.id) unreachable.push(p.id + ' -> ' + (got ? got.id : 'nothing'));
+  });
+  ok(unreachable.length === 0,
+    'props you cannot touch from their own stand point: ' + unreachable.slice(0, 8).join(', '));
+
+  /* and the widest round prop, from inside it and from well outside */
   var widest = null;
   town.propList.forEach(function (p) {
     if (p.rect || p.hidden) return;
     if (!widest || p.r > widest.r) widest = p;
   });
   ok(!!widest, 'there should be a widest round prop');
-  if (!widest) return;
-  var pos = town.propPos(widest);
-  function standingAt(d) {
-    return ER.Game.prototype.pickProp.call({
-      town: town,
-      player: { x: pos.x, y: pos.y + d },
-      director: { currentStep: function () { return { at: widest.id }; } },
-      view: { pick: function () { return null; } },
-      scene3d: { raycastTargets: [] }
-    });
+  if (widest) {
+    var wp = town.propPos(widest);
+    var on = pickFrom(wp.x, wp.y + 0.1, widest.id);
+    ok(on && on.id === widest.id,
+      'standing on ' + widest.id + ' picks ' + (on ? on.id : 'nothing'));
+    var edge = pickFrom(wp.x, wp.y + widest.r - 0.05, widest.id);
+    ok(edge && edge.id === widest.id,
+      'standing at the edge of its own ' + widest.r + ' m radius picks ' +
+      (edge ? edge.id : 'nothing'));
+    var away = pickFrom(wp.x, wp.y + widest.r + ER.REACH + 4, widest.id);
+    ok(!away || away.id !== widest.id,
+      widest.id + ' should not be reachable from four metres past arm\'s length');
   }
-  var on = standingAt(0.1);
-  ok(on && on.id === widest.id,
-    'standing on ' + widest.id + ' picks ' + (on ? on.id : 'nothing'));
-  var edge = standingAt(widest.r - 0.05);
-  ok(edge && edge.id === widest.id,
-    'standing at the edge of its own ' + widest.r + ' m radius picks ' +
-    (edge ? edge.id : 'nothing'));
-  var away = standingAt(widest.r + 5);
-  ok(!away || away.id !== widest.id,
-    widest.id + ' should not be reachable from five metres outside it');
 
-  /* and the rule: a prop's reach may never be tighter than its own hit
-     volume, which is clamp(r, 0.6, 3.2) -- see buildHitVolumes. */
+  /* the rule itself: nothing may be drawn with a footprint wider than the
+     reach that goes with it, or you could see a thing you cannot touch while
+     standing in the middle of it */
   var tight = [];
   town.propList.forEach(function (p) {
     if (p.rect || p.hidden) return;
-    var reach = Math.max(2.2, Math.min(p.r, 3.2));
-    var volume = Math.max(0.6, Math.min(p.r, 3.2));
-    if (reach + 1e-9 < volume) tight.push(p.id);
+    var reach = Math.min(p.r === undefined ? 0.8 : p.r, 3.2) + ER.REACH;
+    var extent = Math.min(p.r === undefined ? 0.8 : p.r, 3.2);
+    if (reach + 1e-9 < extent) tight.push(p.id);
   });
-  ok(tight.length === 0, 'props whose reach is tighter than their hit volume: ' + tight.join(', '));
+  ok(tight.length === 0, 'props whose reach is tighter than their own extent: ' + tight.join(', '));
 }());
 
 /* Paved ground has to read as paved. The renderer and terrainAt work off the

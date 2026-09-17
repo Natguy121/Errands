@@ -54,8 +54,8 @@
     this.hints = el('div', 'panel hints', root);
     this.hints.innerHTML = [
       ['WASD', 'walk'], ['SHIFT', 'run'], ['CTRL', 'crouch'], ['E', 'hold to act'],
-      ['Z', 'linger'], ['C', 'camera'], ['M', 'map'], ['J', 'journal'],
-      ['K', 'abandon errand'], ['H', 'hide this']
+      ['WHEEL', 'zoom'], ['Z', 'linger'], ['C', 'camera'], ['M', 'map'],
+      ['J', 'journal'], ['K', 'abandon errand'], ['H', 'hide this']
     ].map(function (r) { return '<span><b>' + r[0] + '</b>' + r[1] + '</span>'; }).join('');
 
     /* overlays */
@@ -225,6 +225,14 @@
     this.ringFg.style.strokeDashoffset = String(C * (1 - frac));
     this.reticle.classList.toggle('acting', frac > 0.001);
     this.reticle.classList.toggle('live', !p.blocked && !!p.actionable);
+
+    /* The reticle is not in the middle of the screen any more, because you
+       are not: the camera stops following at the edge of the quarter, and a
+       crosshair pinned to the centre would sit on the paving next to you. It
+       follows you instead, which is also where the hold ring belongs. */
+    var s = g.view.worldToScreen(g.view.pos.x, g.view.pos.z);
+    this.reticle.style.left = s.x.toFixed(0) + 'px';
+    this.reticle.style.top = s.y.toFixed(0) + 'px';
   };
 
   /* ---------------- speech bubbles ---------------- */

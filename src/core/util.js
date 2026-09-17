@@ -93,5 +93,11 @@
     return hh + ':' + (m < 10 ? '0' : '') + (m | 0) + ' ' + ap;
   };
 
+  /* How far your arm goes. It belongs here rather than in the renderer
+     because both sides need it: the drawing puts a faint ring at this radius
+     so you can see when you are close enough, and the rules use it to decide
+     what you are able to touch. */
+  ER.REACH = 1.9;
+
   ER.U = U;
 })(typeof window !== 'undefined' ? (window.ER = window.ER || {}) : (global.ER = global.ER || {}));

@@ -1,6 +1,6 @@
 # Errands
 
-A first-person open-world game set in one block of the old quarter of
+A top-down open-world game set in one block of the old quarter of
 **Batroun**, on the Lebanese coast. Fifty metres by fifty: eight stone alleys,
 eighteen sandstone houses with painted shutters and tile roofs, a fountain
 square, the souk, the Phoenician sea wall with the Mediterranean behind it, and
@@ -38,22 +38,22 @@ npx http-server -p 8099 -s .     # or: python3 -m http.server 8099
 
 Then open **http://localhost:8099/** and press **Move in**.
 
-Requires WebGL2 and a mouse (it takes a pointer lock to look around).
-A day in the quarter takes twenty-four real minutes. Progress saves itself
-every twenty-five seconds and on every new day.
+Requires a 2D canvas and a mouse. No WebGL, no pointer lock, and no shader
+warm-up: the quarter is drawn with fills, strokes and eight generated tiling
+patterns, and it loads in under a second. A day takes twenty-four real
+minutes. Progress saves itself every twenty-five seconds and on every new day.
 
-The loading bar spends its last step drawing the town from twelve vantage
-points and cycling every weather state and every overlay screen. That is deliberate: shader programs,
-and especially the shadow-depth variants, otherwise compile the first time you
-actually see each material, so walking into town or catching the first shower
-would hitch. Better to pay for it once, behind the bar.
+You see about twenty-two metres of the quarter at a time, which is roughly
+half of it. The wheel goes from nine metres — a doorway — out to thirty, which
+is all of it at once.
 
 ### Controls
 
 | | |
 |---|---|
-| **Mouse** | look |
-| **W A S D** | walk |
+| **W A S D** | walk — W is north, and you face the way you go |
+| **Mouse** | point at what you want; the dashed ring is how far you can reach |
+| **Wheel** | zoom, nine metres to thirty |
 | **Shift** | run |
 | **Ctrl** / **Q** | crouch |
 | **E** (hold) | do the thing |
@@ -63,7 +63,7 @@ would hitch. Better to pay for it once, behind the bar.
 | **M** | map · **J** journal |
 | **K** | abandon this errand and take the next one |
 | **H** | hide the key list |
-| **Esc** | release the mouse |
+| **Esc** | close a screen |
 
 ---
 
@@ -134,7 +134,6 @@ steps at the bottom of Darb el Daraj are the kerb and do not count.
 
 ```
 index.html              the page, the HUD styles, the loader
-vendor/three.min.js     three.js r160 (MIT), vendored so nothing is fetched at runtime
 src/
   core/
     rng.js              seeded PRNG + value noise; the town is deterministic
@@ -152,17 +151,14 @@ src/
     items.js            the quarter's items and verbs, and five shops
     pool.js / pool2.js  70 errand templates
     director.js         issues one, watches it, issues another
-  three/
-    materials.js        every texture generated at load, with normal and
-                        roughness maps derived from its own height field
-    geom.js             ribbons that follow the ground, roofs, arches, batching
-    sky.js              sun, moon, stars, cloud; hands out the scene lighting
-    world3d.js          the rock shelf, the alleys, the paving, the sea
-    structures.js       houses and buildings; instanced window panes
-    scatter.js          trees, weeds, wiring, wall lamps, signs, props, hit volumes
-    people3d.js         resident rigs and their walk
-    fx.js               rain, wind, puddles, wet stone
-    view.js             the camera, the controls, your hands
+  two/
+    light2d.js          the sun's elevation and bearing -> the day's colour,
+                        the strength of the wash and the length of the shadows
+    scene2d.js          the whole quarter drawn from above: surfaces as
+                        generated tiling patterns, footprints, roofs, trees,
+                        props as glyphs, residents, lamplight, rain
+    view2d.js           the camera, walking, and what the pointer is over
+  ui/
     hud.js              the interface, as HTML over the top
   game.js               wiring
 test/
@@ -183,38 +179,39 @@ templates to completion with a solver, so nothing in the pool can be
 unfinishable.
 
 It checks the layout: that no footprint stands in an alley or on top of
-another, and that paved ground reads as paved underfoot, so nothing grows up
-through it. It checks that you can reach a prop from anywhere inside
-it, by calling the real picking code on a stub. It checks the clock and the
-sun: a day really is twenty-four real minutes, the sun really is on the
-horizon at sunrise and sunset and never jumps more than a fraction of a
-degree in a minute, and dusk really does last long enough to trace a
-gravestone in. And it round-trips a save, errand and step position included.
+another, and that paved ground reads as paved underfoot. It calls the real
+picking code — the same function the game calls — from every one of the 225
+props' own stand points, so nothing an errand sends you to can be out of
+reach when you get there. It checks the clock and the sun: a day really is
+twenty-four real minutes, the sun really is on the horizon at sunrise and
+sunset and never jumps more than a fraction of a degree in a minute, it rises
+in the east and sets in the west over the sea, and dusk really does last long
+enough to work by. And it round-trips a save, errand and step position
+included.
 
 ```sh
 npx http-server -p 8099 -s . &
 node test/browser.js              # add SHOOT=1 to save screenshots to .shots/
 ```
 
-Builds the world in Chromium, drives it with real key events and mouse-look,
-checks eye height over four kinds of ground, picks things out with the
-crosshair, searches a ruin, photographs a streetlamp and applies the edit,
-completes an errand, checks the resident rigs are standing on the ground
-rather than in it, opens every screen, lingers, times a frame, reloads a save,
-and fails on any console error or uncaught exception.
+Checks the canvas has patterns, pattern transforms and ellipses, because the
+drawing leans on all three. Then builds the quarter, drives it with real key
+events, checks that all four movement keys turn you the way you went, points
+the mouse at the fountain from an arm's length and checks that is what gets
+picked, round-trips a world coordinate through the camera, renders four places
+across the day and the weather, holds the light to the hour (noon sun above
+forty degrees, lamps off; lamps on at night; the sun in the east at dawn and
+the west at dusk), searches a ruin, completes an errand, checks no resident is
+standing inside a building, opens every screen, lingers, times a frame,
+photographs the dying streetlamp and applies the darkroom edit, reloads a
+save, and fails on any console error or uncaught exception.
 
-Two flags, both for headless containers where the only GPU is a software
-rasteriser:
+The whole run takes about seven seconds. Two flags survive from when it needed
+a software rasteriser:
 
-- `SHOOT=1` saves screenshots. Off by default: reading pixels back out of a
-  software rasteriser takes tens of seconds, unpredictably.
-- `QUICK=1` skips the three stages that need a real compositor — the
-  sightseeing tour, opening the overlay screens, and taking a photograph.
-  Headless Chromium never produces a composited frame on its own, because it
-  treats the page as hidden and throttles both `requestAnimationFrame` and
-  timers; so the first time a layer or a readback surface is needed, it gets
-  created synchronously inside whatever call is running. Everything else runs,
-  including the whole errand loop. Drop `QUICK` on a machine with a GPU.
+- `SHOOT=1` saves screenshots to `.shots/`.
+- `QUICK=1` skips the four rendered places, the overlay screens and the
+  photograph. Rarely needed now.
 
 ---
 
@@ -241,6 +238,7 @@ otherwise.
 
 ## Credits
 
-three.js r160 by mrdoob and contributors, MIT licensed, vendored in `vendor/`.
-Everything else — every texture, mesh, sound and word — is generated or
-written here.
+No dependencies at all. Every surface, glyph, sound and word is generated or
+written here: eight noise tiles for the stone and the sea, a shading pass over
+the height field for the shape of the rock, and the rest is fills and strokes
+on a 2D context.

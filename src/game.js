@@ -6,7 +6,6 @@
 (function (ER) {
   'use strict';
   var U = ER.U;
-  var T = typeof window !== 'undefined' ? window.THREE : null;
 
   /* Standing still runs the clock an hour a second, so waiting for dusk or
      for the noon siren costs seconds rather than minutes. */
@@ -20,9 +19,9 @@
     this.rng = new ER.RNG('play:' + this.seedStr);
 
     this.view = new ER.View(canvas, this.town);
-    this.scene3d = new ER.Scene3D(this.town, this.clock);
-    this.view.scene.add(this.scene3d.root);
-    this.sky = new ER.Sky(this.view.scene);
+    this.scene = new ER.Scene2D(this.town, this.clock);
+    this.view.scene = this.scene;          /* the view draws through it */
+    this.sky = this.scene.light;           /* the light over the quarter */
 
     this.people = ER.populate(this.town, new ER.RNG('people:' + this.seedStr));
     this.peopleByLot = {};
@@ -58,9 +57,6 @@
 
     var self = this;
     this.clock.on(function (ev, data) { self.onClock(ev, data); });
-    this.view.onLockChange = function (locked) {
-      if (!locked && self.mode === 'play') self.hud.toast('Click to look around again.', 'plain');
-    };
   }
 
   /* ------------------------------------------------------------------ *
@@ -68,112 +64,25 @@
    * ------------------------------------------------------------------ */
 
   Game.prototype.buildWorld = function (onProgress) {
+    /* There is very little to build now. The surfaces are eight small noise
+       tiles, the relief is one 200x200 shading pass over the height field,
+       and everything else is drawn from the town data every frame. What used
+       to be here — terrain chunks, eighteen house kits, 228 batched props and
+       a shader warm-up that drew the quarter from twelve vantage points to
+       stop the first walk down the souk compiling programs mid-stride — has
+       no equivalent: a 2D context has no programs to compile. */
     var steps = [
-      ['the rock the quarter stands on', function (g) { g.scene3d.buildTerrain(); }],
-      ['the rest of the town, at a distance', function (g) { g.scene3d.buildSurrounds(); }],
-      ['eight alleys', function (g) { g.scene3d.buildRoads(); }],
-      ['the square and the quay', function (g) { g.scene3d.buildPads(); }],
-      ['the sea', function (g) { g.scene3d.buildWater(); }],
-      ['eighteen houses and the chapel', function (g) { g.scene3d.buildStructures(); }],
-      ['pots, nets, wires, cats', function (g) { g.scene3d.buildScatter(); }],
-      ['the residents', function (g) { g.people3d = new ER.People3D(g.view.scene, g.town); }],
-      ['weather', function (g) {
-        g.rain = new ER.Rain(g.view.scene);
-        g.puddles = new ER.Puddles(g.view.scene, g.town);
-        g.wet = new ER.Wet(g.scene3d);
-        /* the wind gets into anything with blades */
-        g.windMats = [];
-        g.view.scene.traverse(function (o) {
-          if (!o.isMesh || !o.material) return;
-          if (o.name === 'grass' || o.name === 'weeds' || o.name === 'canopies' || o.name === 'conifers') {
-            ER.addWind(o.material, o.name === 'canopies' || o.name === 'conifers' ? 0.012 : 0.05,
-              o.name === 'canopies' ? 0.05 : 0.2);
-            g.windMats.push(o.material);
-          }
-        });
+      ['the surfaces', function (g) { g.scene.tiles = g.scene.tiles || {}; }],
+      ['the shape of the rock', function (g) { g.scene.buildRelief(); }],
+      ['the residents', function (g) {
+        /* they walk the same graph they always did; from above they are dots */
+        g.scene.game = g;
       }],
-      ['fog', function (g) {
-        /* Light. Fifty metres of alley needs almost none, but the sea runs
-           to the horizon and wants the haze. */
-        g.view.scene.fog = new T.FogExp2(0xbfcbd4, 0.0042);
-      }],
-      /* Shader programs -- and especially the depth variants the shadow map
-         needs -- compile the first time an object is actually drawn. Walking
-         into the built-up blocks for the first time would otherwise compile a
-         dozen of them mid-stride. Warm them up here, behind the loading bar,
-         by drawing the town from a handful of vantage points. */
-      ['warming up the shaders', function (g) {
-        var spots = [
-          [26, 25.6, Math.PI * 0.5, 12.5],     /* the souk at noon */
-          [26, 25.6, Math.PI * 1.5, 22.5],     /* the same, lit by the alley lamps */
-          [8.6, 30, Math.PI * 1.5, 7.0],       /* the quay at dawn, looking at the sea */
-          [9.4, 8.6, Math.PI * 1.25, 19.0],    /* Saydet el Bahr at dusk */
-          [7.6, 21.4, Math.PI * 1.5, 15.0],    /* the sea wall, in the rain */
-          [34.2, 31.6, Math.PI, 16.0],         /* the fountain square */
-          [26.0, 36.4, Math.PI * 0.5, 16.0],   /* the zaroub, at the abandoned house */
-          [20.9, 16.0, Math.PI, 14.0],         /* the alley of steps */
-          [33.4, 27.2, Math.PI * 1.5, 22.4],   /* the dying lamp on the souk */
-          [39.0, 12.4, Math.PI * 1.5, 13.0],   /* the bench on the landing */
-          [10.4, 46.0, Math.PI * 1.5, 8.5],    /* the slipway */
-          [18.6, 43.2, Math.PI, 13.0]          /* Darb et Tahta, at the dukkan */
-        ];
-        var keepMin = g.clock.minutes, keepWx = g.clock.weather;
-        var keep = { x: g.view.pos.x, z: g.view.pos.z, yaw: g.view.yaw };
-        for (var i = 0; i < spots.length; i++) {
-          g.view.pos.x = spots[i][0];
-          g.view.pos.z = spots[i][1];
-          g.view.pos.y = g.town.heightAt(spots[i][0], spots[i][1]);
-          g.view.yaw = spots[i][2];
-          g.clock.minutes = spots[i][3] * 60;
-          if (i === 4) { g.clock.weather = 'rain'; g.clock.wet = 1; }
-          g.view.move(1 / 60, { is: function () { return false; } }, g);
-          g.sky.update(g.clock, 0, g.view.camera.position);
-          g.scene3d.updateWindows(g);
-          g.scene3d.updateLamps(g, g.view.camera.position);
-          if (g.rain) g.rain.update(g.clock, g.view.camera.position, 1 / 60, g.town.heightAt);
-          g.view.renderer.compile(g.view.scene, g.view.camera);
-          g.view.render();
-          /* and into the offscreen target a photograph uses, so that path is
-             warm for these materials too */
-          g.view.snapshot(g.photoSize.w, g.photoSize.h);
-        }
-
-        /* Then every weather state once, at one spot. Rain, its splashes and
-           the puddles are separate meshes that only appear when it is wet, so
-           without this the first shower of the game compiles three programs
-           mid-stride. */
-        var wxs = ['clear', 'overcast', 'drizzle', 'rain', 'storm', 'fog', 'frost'];
-        g.view.pos.x = 26; g.view.pos.z = 25.6;
-        g.view.pos.y = g.town.heightAt(26, 25.6);
-        g.view.move(1 / 60, { is: function () { return false; } }, g);
-        for (var w = 0; w < wxs.length; w++) {
-          g.clock.weather = wxs[w];
-          g.clock.wet = (wxs[w] === 'rain' || wxs[w] === 'storm' || wxs[w] === 'drizzle') ? 1 : 0;
-          g.clock.fogAmt = wxs[w] === 'fog' ? 0.85 : 0;
-          g.sky.update(g.clock, 0, g.view.camera.position);
-          if (g.rain) g.rain.update(g.clock, g.view.camera.position, 1 / 60, g.town.heightAt);
-          if (g.puddles) g.puddles.update(Math.max(0.5, g.clock.wet));
-          if (g.wet) g.wet.update(g.clock.wet);
-          g.view.render();
-        }
-        g.clock.fogAmt = 0;
-        if (g.puddles) g.puddles.update(0);
-
-        /* and each mode once, because every one composites differently */
-        var modes = ['camera', 'map', 'journal', 'play'];
-        for (var m = 0; m < modes.length; m++) {
-          g.mode = modes[m];
-          if (modes[m] === 'journal') g.hud._journalStamp = null;
-          g.render();
-          g.render();
-        }
-        g.mode = 'play';
-        g.clock.minutes = keepMin;
-        g.clock.weather = keepWx;
-        g.clock.wet = 0;
-        g.view.pos.x = keep.x; g.view.pos.z = keep.z; g.view.yaw = keep.yaw;
-        g.view.pos.y = g.town.heightAt(keep.x, keep.z);
-        g.shadersWarm = true;
+      ['one frame, to be sure', function (g) {
+        g.view.resize();
+        g.scene.update(g, 0);
+        g.view.render();
+        g.shadersWarm = true;          /* nothing to warm; the loader waits on it */
       }]
     ];
     this._buildSteps = steps;
@@ -435,28 +344,25 @@
       var wp = this.town.props[wanted];
       if (wp && wp.rect && this.town.inProp(wp, this.player.x, this.player.y, 0)) return wp;
     }
-    var hit = this.view.pick(this.scene3d.raycastTargets, 5.4, wanted);
+    var hit = this.view.pick(this.scene.raycastTargets, null, wanted);
     if (hit) {
       var p = this.town.props[hit.propId];
       if (p) return p;
     }
-    /* Last resort: something you are practically standing on.
+    /* Last resort: something you are practically standing on. The pointer
+       has first call, but it can be nowhere near anything, and the errands
+       assume that being at a prop's own stand point is enough to touch it.
 
-       The reach here has to be the prop's own, not a flat 2.2 m. A hit volume
-       is a sphere of clamp(p.r, 0.6, 3.2) (see buildHitVolumes), so that is
-       how far a prop actually extends, and a cap tighter than it made the
-       widest props unpickable exactly when you stood closest to them. The
-       crosshair cannot rescue you there either: from inside a hit volume the
-       only intersection is the far wall, and for a 3.2 m sphere entered near
-       one edge that lands at 5.6 m -- past the 5.4 m the crosshair reaches.
-       That is what put the moss on the old stone bridge out of reach while
-       standing on it. Keep the old 2.2 m as a floor so small props still have
-       their grace. */
+       The reach is the prop's own extent plus an arm's length, not a flat
+       cap. The first-person version had to work this out the hard way: a hit
+       volume was a sphere of clamp(r, 0.6, 3.2) and a tighter cap put the
+       widest props out of reach exactly when you were standing on them.
+       From above the geometry is simpler, but the rule is the same one. */
     var near = this.town.propAt(this.player.x, this.player.y, wanted);
     if (near && near.rect) return near;
     if (near) {
       var pos = this.town.propPos(near);
-      var reach = Math.max(2.2, Math.min(near.r, 3.2));
+      var reach = Math.min(near.r === undefined ? 0.8 : near.r, 3.2) + ER.REACH;
       if (U.dist(this.player.x, this.player.y, pos.x, pos.y) <= reach) return near;
     }
     return null;
@@ -588,7 +494,7 @@
    *  photographs
    * ------------------------------------------------------------------ */
 
-  Game.prototype.framedTargets = function () { return this.view.framed(this.scene3d, 80); };
+  Game.prototype.framedTargets = function () { return this.view.framed(this.scene, 80); };
 
   Game.prototype.shoot = function () {
     var cv = this.view.snapshot(this.photoSize.w, this.photoSize.h);
@@ -630,15 +536,11 @@
    *  modes
    * ------------------------------------------------------------------ */
 
-  Game.prototype.exitLook = function () {
-    if (document.pointerLockElement) document.exitPointerLock();
-  };
-
-  Game.prototype.enterLook = function () {
-    var self = this;
-    this.view.suppressLock = false;
-    if (!document.pointerLockElement) this.cv.requestPointerLock();
-  };
+  /* Looking around used to mean pointer lock. From above there is nothing to
+     lock: the mouse is a pointer, and the map, the journal and the viewfinder
+     all want it back. Kept as no-ops because the mode changes call them. */
+  Game.prototype.exitLook = function () {};
+  Game.prototype.enterLook = function () {};
 
   Game.prototype.handleKeys = function () {
     var inp = this.input;
@@ -759,36 +661,11 @@
     ER.updateResidents(this.people, this.town, this.clock, dt, this.player, this);
 
     /* --- world state --- */
-    this.sky.update(this.clock, this.t, this.view.camera.position);
-    if (this.view.scene.fog) {
-      this.view.scene.fog.color.copy(this.sky.fogColor);
-      this.view.scene.fog.density = this.sky.fogDensity;
-    }
-    this.scene3d.updateWindows(this);
-    this.scene3d.updateLamps(this, this.view.camera.position);
-    this.scene3d.updateGrass(this.view.pos.x, this.view.pos.z);
-    if (this.scene3d.waterMat) {
-      this.scene3d.waterMat.normalMap.offset.set(this.t * 0.012, this.t * 0.05);
-    }
-    if (this.windMats) {
-      var gust = 0.9 + Math.sin(this.t * 0.31) * 0.5 + Math.sin(this.t * 0.11) * 0.3;
-      var wxMul = { storm: 3.4, rain: 1.9, drizzle: 1.3, fog: 0.4 }[this.clock.weather] || 1;
-      for (var m = 0; m < this.windMats.length; m++) {
-        var u = this.windMats[m].userData.windUniform;
-        if (u) {
-          u.value.x = this.t * 1.5;
-          /* from the stored base, not from the uniform's own current value */
-          u.value.z = this.windMats[m].userData.windBase * gust * wxMul;
-        }
-      }
-    }
-    if (this.rain) this.rain.update(this.clock, this.view.camera.position, dt, this.town.heightAt);
-    if (this.puddles) this.puddles.update(this.clock.wet);
-    if (this.wet) this.wet.update(this.clock.wet);
-    if (this.people3d) this.people3d.update(this.people, this.view.camera.position, dt, this.t);
-
+    /* One call. The light, the shadow bearing, the lamps coming on, the rain
+       and the swell all come out of the clock, and the scene reads them when
+       it draws. */
+    this.scene.update(this, dt);
     this.view.setHeld(this.mode === 'camera' ? 'photo' : this.heldItem());
-    this.view.renderer.toneMappingExposure = 1.0 + (1 - this.clock.daylight()) * 0.22;
 
     this.hud.update(dt);
     this.audio.ambience(this.clock, dt, this.town, this.player);
@@ -802,9 +679,8 @@
   Game.prototype.render = function () {
     this.view.render();
     this.hud.draw();
-    if (this.people3d && this.mode === 'play') {
-      this.hud.drawBubbles(this.people3d.screenPositions(this.people, this.view.camera,
-        this.view.camera.position, this.view.w, this.view.h));
+    if (this.mode === 'play') {
+      this.hud.drawBubbles(this.scene.bubblePositions(this.people, this.view));
     } else this.hud.bubbles.innerHTML = '';
   };
 

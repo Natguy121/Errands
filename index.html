@@ -297,7 +297,7 @@
     <button id="fresh" class="ghost" hidden>Start over</button>
   </div>
   <div class="keys">
-    <div><b>MOUSE</b> look &middot; <b>WASD</b> walk</div>
+    <div><b>WASD</b> walk &middot; <b>MOUSE</b> point &middot; <b>WHEEL</b> zoom</div>
     <div><b>SHIFT</b> run &middot; <b>CTRL</b> crouch</div>
     <div><b>E</b> hold to do the thing</div>
     <div><b>Z</b> linger &mdash; time passes fast</div>
@@ -317,8 +317,6 @@
   </p>
 </div>
 
-<!-- three.js r160, vendored; no network access required -->
-<script src="vendor/three.min.js"></script>
 
 <script src="src/core/rng.js"></script>
 <script src="src/core/util.js"></script>
@@ -333,16 +331,10 @@
 <script src="src/quest/pool.js"></script>
 <script src="src/quest/pool2.js"></script>
 <script src="src/quest/director.js"></script>
-<script src="src/three/materials.js"></script>
-<script src="src/three/geom.js"></script>
-<script src="src/three/sky.js"></script>
-<script src="src/three/world3d.js"></script>
-<script src="src/three/structures.js"></script>
-<script src="src/three/scatter.js"></script>
-<script src="src/three/people3d.js"></script>
-<script src="src/three/fx.js"></script>
-<script src="src/three/view.js"></script>
-<script src="src/three/hud.js"></script>
+<script src="src/two/light2d.js"></script>
+<script src="src/two/scene2d.js"></script>
+<script src="src/two/view2d.js"></script>
+<script src="src/ui/hud.js"></script>
 <script src="src/game.js"></script>
 
 <script>
@@ -402,12 +394,9 @@
     boot.classList.add('gone');
     setTimeout(function () { boot.style.display = 'none'; }, 800);
 
-    game.view.onLockChange = function (locked) {
-      document.body.classList.toggle('unlocked', !locked);
-    };
-    /* Pointer lock has to come from a gesture, so the canvas asks for it on
-       click (see View.bindPointer). Asking here would only throw. */
-    game.hud.toast('Click to look around.', 'plain');
+    /* No pointer lock to ask for: the mouse points at what you want and the
+       wheel zooms. */
+    game.hud.toast('WASD to walk. The mouse points. E acts.', 'plain');
 
     last = performance.now();
     if (raf) cancelAnimationFrame(raf);
