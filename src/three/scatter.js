@@ -541,82 +541,45 @@
 
   /* ---------------- fences ---------------- */
 
+  /* No fences. Nobody here has a yard to fence -- the wall of the house is
+     the edge of the property and the alley starts at it. What there is: an
+     iron handrail down the steps, and a low parapet along the seaward lip of
+     the quay so you do not walk off it in the dark. */
   S.buildFences = function (batch) {
     var town = this.town, h = this.h;
-    var postMat = this.material('wood', { color: 0x8c7d64 });
-    var wireMat = this.flat('barbwire', 0x7e817c, 0.7, 0.5);
-    var i;
+    var railMat = this.flat('handrail', 0x4a453e, 0.6, 0.5);
+    var parapet = this.material('sandstone', {});
 
-    /* the pasture line west of Church Street, which the errands keep sending
-       you along */
-    var line = [[300, 668], [560, 674]];
-    var n = 34;
-    for (i = 0; i <= n; i++) {
-      var t = i / n;
-      var x = U.lerp(line[0][0], line[1][0], t), z = U.lerp(line[0][1], line[1][1], t);
-      var pg = G.cyl(0.07, 0.09, 1.28, 6, TILE.wood);
-      pg.translate(x, h(x, z), z);
-      batch.add('fenceposts', pg, postMat);
-      if (i > 0) {
-        var px = U.lerp(line[0][0], line[1][0], (i - 1) / n), pz = U.lerp(line[0][1], line[1][1], (i - 1) / n);
-        for (var w = 0; w < 3; w++) {
-          var y = 0.42 + w * 0.34;
-          batch.add('barbwire', G.wire(
-            new T.Vector3(px, h(px, pz) + y, pz),
-            new T.Vector3(x, h(x, z) + y, z), 0.06, 0.012, 3), wireMat);
+    var daraj = town.roadById.daraj;
+    if (daraj) {
+      var pts = daraj.pts.map(function (q) { return [q[0], q[1]]; });
+      var len = ER.poly.length(pts);
+      var prev = null;
+      for (var s2 = 0; s2 <= len; s2 += 1.1) {
+        var at2 = ER.poly.pointAt(pts, Math.min(s2, len));
+        var nrm = ER.poly.normal(pts, at2.seg);
+        var px = at2.x + nrm.x * (daraj.width / 2 - 0.12);
+        var pz = at2.y + nrm.y * (daraj.width / 2 - 0.12);
+        var pb = h(px, pz);
+        var post = G.cyl(0.022, 0.026, 0.95, 5);
+        post.translate(px, pb, pz);
+        batch.add('handrail', post, railMat);
+        if (prev) {
+          batch.add('handrail', G.wire(
+            new T.Vector3(prev.x, prev.y + 0.92, prev.z),
+            new T.Vector3(px, pb + 0.92, pz), 0.0, 0.018, 2), railMat);
         }
+        prev = { x: px, y: pb, z: pz };
       }
     }
-    /* the four posts the errands single out get a taller, squarer one */
-    for (i = 0; i < 4; i++) {
-      var fp = town.props['fencepost_' + i];
-      if (!fp) continue;
-      var sq = G.box(0.16, 1.5, 0.16, TILE.wood);
-      sq.translate(fp.x, h(fp.x, fp.y), fp.y);
-      batch.add('fenceposts', sq, postMat);
-    }
 
-    /* yard fences */
-    for (i = 0; i < town.lots.length; i++) {
-      var lot = town.lots[i];
-      if (!lot.features.fence) continue;
-      var f = lot.features.fence, y = lot.yard;
-      var sides = { n: [[y.x, y.y], [y.x + y.w, y.y]], s: [[y.x, y.y + y.h], [y.x + y.w, y.y + y.h]],
-        w: [[y.x, y.y], [y.x, y.y + y.h]], e: [[y.x + y.w, y.y], [y.x + y.w, y.y + y.h]] };
-      for (var sIdx = 0; sIdx < f.sides.length; sIdx++) {
-        var seg = sides[f.sides[sIdx]];
-        if (!seg) continue;
-        var len = U.dist(seg[0][0], seg[0][1], seg[1][0], seg[1][1]);
-        var count = Math.max(2, Math.round(len / 2.4));
-        for (var k = 0; k <= count; k++) {
-          var tt = k / count;
-          var fx = U.lerp(seg[0][0], seg[1][0], tt), fz = U.lerp(seg[0][1], seg[1][1], tt);
-          var fh = f.kind === 'picket' ? 1.05 : 1.2;
-          var post = f.kind === 'picket'
-            ? G.box(0.07, fh, 0.07) : G.cyl(0.035, 0.04, fh, 5);
-          post.translate(fx, h(fx, fz), fz);
-          batch.add(f.kind === 'picket' ? 'picket' : 'fenceposts',
-            post, f.kind === 'picket' ? this.flat('picket', 0xdcd8c9, 0.72, 0) : postMat);
-        }
-        if (f.kind === 'picket') {
-          for (var pk = 0; pk < Math.round(len / 0.14); pk++) {
-            var pt = pk * 0.14 / len;
-            if (pt > 1) break;
-            var kx = U.lerp(seg[0][0], seg[1][0], pt), kz = U.lerp(seg[0][1], seg[1][1], pt);
-            var slat = G.box(0.08, 0.95, 0.02);
-            slat.translate(kx, h(kx, kz), kz);
-            batch.add('picket', slat, this.flat('picket', 0xdcd8c9, 0.72, 0));
-          }
-        } else {
-          var panel = new T.Mesh(new T.PlaneGeometry(len, 1.2), this.chainlinkTexture());
-          panel.position.set((seg[0][0] + seg[1][0]) / 2,
-            h((seg[0][0] + seg[1][0]) / 2, (seg[0][1] + seg[1][1]) / 2) + 0.6,
-            (seg[0][1] + seg[1][1]) / 2);
-          panel.rotation.y = -Math.atan2(seg[1][1] - seg[0][1], seg[1][0] - seg[0][0]);
-          this.root.add(panel);
-        }
-      }
-    }
+    /* the parapet: a low coping along the quay, seaward side */
+    var lip = [];
+    for (var y2 = 1.0; y2 <= town.h - 1.0; y2 += 1.5) lip.push([town.sea.wall.x + 1.55, y2]);
+    batch.add('parapet', G.ribbon(lip, {
+      height: function (x, z) { return h(x, z) + 0.34; },
+      width: 0.34, lift: 0, step: 1.5, uvPerMetre: 0.8
+    }), parapet);
   };
 
   /* ---------------- cars, mailboxes, hydrants, gravestones ---------------- */
@@ -697,36 +660,24 @@
       }
     }
 
-    /* mailboxes */
-    var mbPost = this.material('wood', { color: 0x7e7059 });
-    var mbMat = this.flat('mailbox', 0x8e918c, 0.5, 0.5);
-    var boxes = [];
-    for (i = 0; i < town.lots.length; i++) boxes.push(town.lots[i].mailbox);
-    boxes.push({ x: town.home.mailX, y: town.home.mailY, shown: String(town.home.number) });
-    for (i = 0; i < boxes.length; i++) {
-      var mb = boxes[i], mbB = h(mb.x, mb.y);
-      var post = G.box(0.09, 1.18, 0.09, TILE.wood);
-      post.translate(mb.x, mbB, mb.y);
-      batch.add('mbpost', post, mbPost);
-      var box = G.box(0.19, 0.19, 0.46);
-      box.translate(mb.x, mbB + 1.18, mb.y);
-      batch.add('mailbox', box, mbMat);
-      var lid = new T.CylinderGeometry(0.095, 0.095, 0.46, 10, 1, false, 0, Math.PI);
-      lid.rotateX(Math.PI / 2);
-      lid.rotateY(Math.PI / 2);
-      lid.translate(mb.x, mbB + 1.37, mb.y);
-      batch.add('mailbox', lid, mbMat);
-      var flag = G.box(0.02, 0.2, 0.06);
-      flag.translate(mb.x + 0.1, mbB + 1.2, mb.y - 0.16);
-      batch.add('mbflag', flag, this.flat('mbflag', 0xa03a2a, 0.6, 0.1));
-      /* the number, which for one of these is wrong */
-      var nTex = G.signTexture([mb.shown], { w: 128, h: 64, bg: '#8e918c', fg: '#1d1f1e', size: 44 });
-      var plate = new T.Mesh(new T.PlaneGeometry(0.34, 0.17),
-        new T.MeshStandardMaterial({ map: nTex, roughness: 0.6, metalness: 0.3 }));
-      plate.position.set(mb.x + 0.1, mbB + 1.28, mb.y + 0.12);
-      plate.rotation.y = Math.PI / 2;
-      this.root.add(plate);
-    }
+    /* No mailboxes on posts. The number is a small enamel or painted plate
+       screwed to the wall beside the door, and one of them is wrong. */
+    var plateMat = this.flat('platebrass', 0x9a8a5e, 0.5, 0.6);
+    var P2 = town.props, selfY = this;
+    town.lots.forEach(function (l) {
+      var pp = P2['plate_' + l.id]; if (!pp) return;
+      var pb = h(pp.x, pp.y);
+      var back = G.box(0.16, 0.12, 0.012);
+      back.translate(pp.x, pb + 1.75, pp.y);
+      batch.add('platebrass', back, plateMat);
+      var tex = G.signTexture([l.plate.shown], { w: 96, h: 64, bg: '#9a8a5e', fg: '#1d1f1e', size: 40 });
+      var face = new T.Mesh(new T.PlaneGeometry(0.15, 0.11),
+        new T.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.35 }));
+      var dx = l.nx, dz = l.ny;
+      face.position.set(pp.x + dx * 0.02, pb + 1.75, pp.y + dz * 0.02);
+      face.rotation.y = Math.atan2(dx, dz);
+      selfY.root.add(face);
+    });
 
     /* hydrants */
     for (i = 0; i < 5; i++) {

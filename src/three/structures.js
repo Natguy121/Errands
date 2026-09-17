@@ -278,19 +278,11 @@
       batch.add('metal_dark', fan, this.flat('acfan', 0x3a3d3d, 0.5, 0.5), xf);
     }
 
-    /* --- the satellite dish, still pointed where the installer left it --- */
-    if (lot.features && lot.features.dish) {
-      var dr = lot.features.dish.r + 0.12;
-      var arm = G.cyl(0.035, 0.035, 0.7, 6);
-      arm.rotateZ(0.5);
-      arm.translate(w / 2 - 0.5, y0 + wallH + 0.25, d / 2 - 0.35);
-      batch.add('metal_grey', arm, this.flat('dishArm', 0x8d8d86, 0.55, 0.4), xf);
-      var dish = new T.SphereGeometry(dr, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.32);
-      dish.rotateX(Math.PI * 0.62);
-      dish.translate(w / 2 - 0.16, y0 + wallH + 0.62, d / 2 - 0.2);
-      batch.add('dish', dish, this.flat('dishFace', 0xd8d6cc, 0.5, 0.1,
-        { side: T.DoubleSide }), xf);
-    }
+    /* The dishes and the water tanks are built in the scatter pass now, off
+       their own prop ids, so they sit where the errands say they sit. The
+       version that used to be here read features.dish as a {x,y,r} and got a
+       boolean, which made every one of its 4860 vertex positions NaN --
+       invisible in the frame, and a console warning nobody reads. */
 
     /* --- the house number, on the trim by the door --- */
     if (!isHome) {

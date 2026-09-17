@@ -160,12 +160,9 @@
     var tiles = { flag: TILE.flag, quay: TILE.sett, slip: TILE.concrete, stone: TILE.sett };
     var i;
 
-    for (i = 0; i < town.lots.length; i++) {
-      var dw = town.lots[i].driveway;
-      batch.add('pad_' + dw.kind, G.ribbon([[dw.x0, dw.y0], [dw.x1, dw.y1]], {
-        height: h, width: dw.w, lift: 0.048, step: 2, uvPerMetre: tiles[dw.kind]
-      }), mats[dw.kind]);
-    }
+    /* No driveways. Nobody in the quarter can get a car within thirty metres
+       of their own door, which is why there is one Mercedes parked where the
+       souk gives out and a moped leaning on a wall. */
     /* your own front walk, and any other poured strip */
     for (i = 0; i < town.pavedStrips.length; i++) {
       var st = town.pavedStrips[i];
